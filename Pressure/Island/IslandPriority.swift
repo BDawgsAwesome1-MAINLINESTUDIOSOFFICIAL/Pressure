@@ -60,12 +60,14 @@ enum IslandTimeFormat {
 enum MediaSource: String, Equatable {
     case music
     case spotify
+    case brave
     case safari
 
     var appName: String {
         switch self {
         case .music: return "Music"
         case .spotify: return "Spotify"
+        case .brave: return "Brave Browser"
         case .safari: return "Safari"
         }
     }
@@ -74,6 +76,7 @@ enum MediaSource: String, Equatable {
         switch self {
         case .music: return "com.apple.Music"
         case .spotify: return "com.spotify.client"
+        case .brave: return "com.brave.Browser"
         case .safari: return "com.apple.Safari"
         }
     }
@@ -111,14 +114,38 @@ enum NowPlayingParser {
         }
     }
 
-    /// Playing wins over paused. Music wins when both apps are in the same state.
-    /// Stopped players are hidden.
+    /// Playing wins over paused. Music, then Spotify, then a browser.
+    /// Stopped players are hidden. A `denied` line is not a track.
     static func choose(from raw: String?) -> MediaSample? {
         guard let raw else { return nil }
         let active = samples(from: raw).filter { $0.state == "playing" || $0.state == "paused" }
-        if let music = active.first(where: { $0.source == .music && $0.isPlaying }) { return music }
-        if let playing = active.first(where: \.isPlaying) { return playing }
-        if let music = active.first(where: { $0.source == .music }) { return music }
-        return active.first
+        let order: [MediaSource] = [.music, .spotify, .brave, .safari]
+        for source in order {
+            if let playing = active.first(where: { $0.source == source && $0.isPlaying }) {
+                return playing
+            }
+        }
+        for source in order {
+            if let paused = active.first(where: { $0.source == source && $0.state == "paused" }) {
+                return paused
+            }
+        }
+        return nil
+    }
+
+    /// One short line when Music or Spotify refused the Apple Event (-1743).
+    static func denialNote(from raw: String) -> String? {
+        var names: [String] = []
+        for line in raw.split(whereSeparator: \.isNewline) {
+            let parts = String(line).components(separatedBy: "\t")
+            guard parts.count >= 2, parts[1] == "denied" else { continue }
+            if parts[0] == MediaSource.music.rawValue, !names.contains("Music") {
+                names.append("Music")
+            } else if parts[0] == MediaSource.spotify.rawValue, !names.contains("Spotify") {
+                names.append("Spotify")
+            }
+        }
+        guard !names.isEmpty else { return nil }
+        return "Allow \(names.joined(separator: " and ")) in Automation"
     }
 }

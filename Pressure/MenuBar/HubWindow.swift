@@ -382,6 +382,12 @@ struct HubView: View {
                                 .font(.system(size: 11, weight: .medium))
                                 .foregroundStyle(.white.opacity(0.55))
                                 .lineLimit(1)
+                            if let note = island.playbackNote, !note.isEmpty {
+                                Text(note)
+                                    .font(.system(size: 11, weight: .semibold))
+                                    .foregroundStyle(Color(nsColor: .systemOrange))
+                                    .lineLimit(2)
+                            }
                         }
                         Spacer(minLength: 4)
                     }

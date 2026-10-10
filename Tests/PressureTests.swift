@@ -185,6 +185,12 @@ struct PressureTests {
         let safari = NowPlayingParser.choose(from: "music\tpaused\tSong\tBand\nsafari\tplaying\tClip\tPage\thttps://example.com/cover.jpg\n")
         check(safari?.source == .safari && safari?.isPlaying == true, "playing Safari media beats paused Music")
         check(safari?.artworkURL == "https://example.com/cover.jpg", "Safari artwork URL is kept")
+        let brave = NowPlayingParser.choose(from: "brave\tplaying\tLive\tStation\thttps://example.com/brave.jpg\nspotify\tpaused\tOther\tBand\n")
+        check(brave?.source == .brave && brave?.artworkURL == "https://example.com/brave.jpg", "playing Brave wins over paused Spotify")
+        let musicOverBrowser = NowPlayingParser.choose(from: "brave\tplaying\tTab\tPage\nmusic\tplaying\tSong\tArtist\t/tmp/cover.jpg\n")
+        check(musicOverBrowser?.source == .music && musicOverBrowser?.artworkURL == "/tmp/cover.jpg", "playing Music wins over a playing browser")
+        check(NowPlayingParser.choose(from: "music\tdenied\n") == nil, "an Automation refusal is not a track")
+        check(NowPlayingParser.denialNote(from: "music\tdenied\nspotify\tplaying\tSong\tArtist\n") == "Allow Music in Automation", "a refused Music event stays visible")
 
         let power = PowerReader.read()
         if power.mode == .battery {

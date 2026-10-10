@@ -7,7 +7,7 @@ The compact pill stays small. It always shows battery, or AC on a desktop with n
 ## Live activities
 
 1. Battery is always on the pill: percent, charging or on battery, and a low-battery state. A desktop Mac with no battery shows AC.
-2. Now Playing from Music, Spotify, or Safari, with artwork and play/pause. If nothing is playing, that row hides. Safari is read with Apple Events and JavaScript in the front window; if JavaScript from Apple Events is off, Safari stays quiet and Music and Spotify still work.
+2. Now Playing from Music, Spotify, Safari, or Brave, with artwork and play/pause. If nothing is playing, that row hides. Music and Spotify are read with AppleScript. Safari and Brave are read with Apple Events and JavaScript in the browser's own windows; if JavaScript from Apple Events is off, that browser stays quiet and the others still work.
 3. A running timer. Presets are 1, 5, 15, and 25 minutes, with start, pause, and cancel. When it finishes, the island opens on its own, then can collapse. The countdown shows on the pill only while it is running.
 4. A stopwatch while it is running, with start, stop, lap, and reset. Its time shows on the pill only while it is running.
 5. The next calendar event today, on the expanded card. Calendar access is requested the normal way. If access is denied, or today has no event, this row hides.
@@ -42,7 +42,7 @@ The script compiles with the Swift command-line tools, signs the app ad hoc, and
 
 Launch at login uses `SMAppService` and needs a stably signed copy, ideally in `/Applications`. An ad-hoc build will explain that in Settings if macOS rejects it.
 
-The first Now Playing control asks for permission to control Music or Spotify. The first calendar read asks for calendar access. Both are optional: if you decline, that activity stays hidden.
+The first Now Playing control asks for permission to control Music, Spotify, Safari, or Brave. The first calendar read asks for calendar access. Both are optional: if you decline, that activity stays hidden. A refused Music or Spotify control shows one line on the island: allow it in Automation.
 
 ## Safety
 

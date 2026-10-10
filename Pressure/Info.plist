@@ -8,6 +8,8 @@
 	<string>Pressure</string>
 	<key>CFBundleExecutable</key>
 	<string>Pressure</string>
+	<key>CFBundleIconFile</key>
+	<string>Pressure</string>
 	<key>CFBundleIdentifier</key>
 	<string>com.mainlinestudios.Pressure</string>
 	<key>CFBundleInfoDictionaryVersion</key>
@@ -27,7 +29,7 @@
 	<key>LSUIElement</key>
 	<true/>
 	<key>NSAppleEventsUsageDescription</key>
-	<string>Pressure controls Music and Spotify for Now Playing on the side island, and quits apps you marked as low priority when memory is almost full.</string>
+	<string>Pressure controls Music, Spotify, Safari, and Brave for Now Playing on the side island, and quits apps you marked as low priority when memory is almost full.</string>
 	<key>NSCalendarsUsageDescription</key>
 	<string>Pressure shows your next event today on the side island.</string>
 	<key>NSCalendarsFullAccessUsageDescription</key>

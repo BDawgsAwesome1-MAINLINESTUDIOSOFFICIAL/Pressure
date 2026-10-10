@@ -55,7 +55,10 @@ swiftc "${SWIFT_FLAGS[@]}" -O -o "$APP/Contents/MacOS/Pressure" \
   "$ROOT/Pressure/Island/IslandModel.swift"
 
 cp "$ROOT/Pressure/Info.plist" "$APP/Contents/Info.plist"
+cp "$ROOT/Pressure/Resources/Pressure.icns" "$APP/Contents/Resources/Pressure.icns"
 xattr -cr "$APP"
+xattr -dr com.apple.provenance "$APP" 2>/dev/null || true
 xattr -d com.apple.FinderInfo "$APP" 2>/dev/null || true
+xattr -d 'com.apple.fileprovider.fpfs#P' "$APP" 2>/dev/null || true
 codesign --force --sign - --entitlements "$ROOT/Pressure/Pressure.entitlements" "$APP"
 echo "Built $APP"

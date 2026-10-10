@@ -38,8 +38,10 @@ final class IslandModel: ObservableObject {
     @Published private(set) var countdown = CountdownState()
     @Published private(set) var stopwatch = StopwatchState()
     @Published private(set) var alertMessage: String?
+    @Published private(set) var playbackNote: String?
 
     var onAlert: (() -> Void)?
+    var onPlaybackNote: ((String) -> Void)?
 
     private let agenda = CalendarAgenda()
     private var clock: Timer?
@@ -50,6 +52,7 @@ final class IslandModel: ObservableObject {
     private var accumulatedStopwatch: TimeInterval = 0
     private var countdownFinished = false
     private var artworkURL = ""
+    private var lastPlaybackNote: String?
     private let clockFormatter: DateFormatter = {
         let formatter = DateFormatter()
         formatter.timeStyle = .short
@@ -333,9 +336,17 @@ final class IslandModel: ObservableObject {
         switch MediaController.poll() {
         case .failed:
             break
-        case .update(let sample):
+        case .update(let sample, let note):
             media = sample
             syncArtwork(with: sample)
+            guard note != playbackNote else { return }
+            playbackNote = note
+            if let note, note != lastPlaybackNote {
+                lastPlaybackNote = note
+                onPlaybackNote?(note)
+            } else if note == nil {
+                lastPlaybackNote = nil
+            }
         }
     }
 

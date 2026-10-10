@@ -14,6 +14,9 @@ final class PressureAppModel {
     init() {
         engine = PressureEngine(monitor: monitor, configStore: configStore, log: log)
         island = IslandModel(monitor: monitor, configStore: configStore)
+        island.onPlaybackNote = { [log] note in
+            log.record(note)
+        }
     }
 
     func start() {
