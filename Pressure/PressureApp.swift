@@ -7,17 +7,20 @@ final class PressureAppModel {
     let configStore = ConfigStore()
     let log = ActionLog()
     let engine: PressureEngine
+    let island: IslandModel
     private(set) var loginItemStatus = ""
     private var settings: SettingsWindowController?
 
     init() {
         engine = PressureEngine(monitor: monitor, configStore: configStore, log: log)
+        island = IslandModel(monitor: monitor, configStore: configStore)
     }
 
     func start() {
         refreshLoginItemStatus()
         engine.start()
         monitor.start()
+        island.start()
     }
 
     func showSettings() {

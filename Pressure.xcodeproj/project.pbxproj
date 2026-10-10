@@ -18,6 +18,11 @@
 		BA000009 /* SettingsWindow.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA000009; };
 		BA00000B /* HubLayout.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA00000E; };
 		BA00000C /* HubWindow.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA00000F; };
+		BA000010 /* IslandPriority.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA000010; };
+		BA000011 /* NowPlaying.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA000011; };
+		BA000012 /* PowerReader.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA000012; };
+		BA000013 /* CalendarAgenda.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA000013; };
+		BA000014 /* IslandModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA000014; };
 		BA00000A /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = FA00000B; };
 /* End PBXBuildFile section */
 
@@ -33,6 +38,11 @@
 		FA000009 /* SettingsWindow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsWindow.swift; sourceTree = "<group>"; };
 		FA00000E /* HubLayout.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HubLayout.swift; sourceTree = "<group>"; };
 		FA00000F /* HubWindow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HubWindow.swift; sourceTree = "<group>"; };
+		FA000010 /* IslandPriority.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IslandPriority.swift; sourceTree = "<group>"; };
+		FA000011 /* NowPlaying.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NowPlaying.swift; sourceTree = "<group>"; };
+		FA000012 /* PowerReader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PowerReader.swift; sourceTree = "<group>"; };
+		FA000013 /* CalendarAgenda.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CalendarAgenda.swift; sourceTree = "<group>"; };
+		FA000014 /* IslandModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IslandModel.swift; sourceTree = "<group>"; };
 		FA00000A /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		FA00000B /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		FA00000C /* Pressure.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Pressure.entitlements; sourceTree = "<group>"; };
@@ -63,6 +73,7 @@
 			children = (
 				FA000001 /* PressureApp.swift */,
 				GR000003 /* MenuBar */,
+				GR000008 /* Island */,
 				GR000004 /* Core */,
 				GR000005 /* Config */,
 				GR000006 /* Resources */,
@@ -81,6 +92,18 @@
 				FA00000F /* HubWindow.swift */,
 			);
 			path = MenuBar;
+			sourceTree = "<group>";
+		};
+		GR000008 /* Island */ = {
+			isa = PBXGroup;
+			children = (
+				FA000010 /* IslandPriority.swift */,
+				FA000011 /* NowPlaying.swift */,
+				FA000012 /* PowerReader.swift */,
+				FA000013 /* CalendarAgenda.swift */,
+				FA000014 /* IslandModel.swift */,
+			);
+			path = Island;
 			sourceTree = "<group>";
 		};
 		GR000004 /* Core */ = {
@@ -198,6 +221,11 @@
 				BA000009 /* SettingsWindow.swift in Sources */,
 				BA00000B /* HubLayout.swift in Sources */,
 				BA00000C /* HubWindow.swift in Sources */,
+				BA000010 /* IslandPriority.swift in Sources */,
+				BA000011 /* NowPlaying.swift in Sources */,
+				BA000012 /* PowerReader.swift in Sources */,
+				BA000013 /* CalendarAgenda.swift in Sources */,
+				BA000014 /* IslandModel.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

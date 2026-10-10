@@ -27,7 +27,11 @@
 	<key>LSUIElement</key>
 	<true/>
 	<key>NSAppleEventsUsageDescription</key>
-	<string>Pressure quits apps you marked as low priority when memory is almost full.</string>
+	<string>Pressure controls Music and Spotify for Now Playing on the side island, and quits apps you marked as low priority when memory is almost full.</string>
+	<key>NSCalendarsUsageDescription</key>
+	<string>Pressure shows your next event today on the side island.</string>
+	<key>NSCalendarsFullAccessUsageDescription</key>
+	<string>Pressure shows your next event today on the side island.</string>
 	<key>NSHighResolutionCapable</key>
 	<true/>
 	<key>NSHumanReadableCopyright</key>

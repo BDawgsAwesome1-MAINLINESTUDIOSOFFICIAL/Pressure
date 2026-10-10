@@ -20,6 +20,8 @@ SWIFT_FLAGS=(
   -framework Combine
   -framework UserNotifications
   -framework ServiceManagement
+  -framework IOKit
+  -framework EventKit
 )
 
 echo "Testing decision logic"
@@ -28,6 +30,8 @@ swiftc "${SWIFT_FLAGS[@]}" -o "$BUILD/PressureTests" \
   "$ROOT/Pressure/Config/AppPriority.swift" \
   "$ROOT/Pressure/Core/MemorySnapshot.swift" \
   "$ROOT/Pressure/MenuBar/HubLayout.swift" \
+  "$ROOT/Pressure/Island/IslandPriority.swift" \
+  "$ROOT/Pressure/Island/PowerReader.swift" \
   "$ROOT/Tests/PressureTests.swift"
 "$BUILD/PressureTests"
 
@@ -43,7 +47,12 @@ swiftc "${SWIFT_FLAGS[@]}" -O -o "$APP/Contents/MacOS/Pressure" \
   "$ROOT/Pressure/MenuBar/StatusItemView.swift" \
   "$ROOT/Pressure/MenuBar/SettingsWindow.swift" \
   "$ROOT/Pressure/MenuBar/HubLayout.swift" \
-  "$ROOT/Pressure/MenuBar/HubWindow.swift"
+  "$ROOT/Pressure/MenuBar/HubWindow.swift" \
+  "$ROOT/Pressure/Island/IslandPriority.swift" \
+  "$ROOT/Pressure/Island/PowerReader.swift" \
+  "$ROOT/Pressure/Island/NowPlaying.swift" \
+  "$ROOT/Pressure/Island/CalendarAgenda.swift" \
+  "$ROOT/Pressure/Island/IslandModel.swift"
 
 cp "$ROOT/Pressure/Info.plist" "$APP/Contents/Info.plist"
 xattr -cr "$APP"

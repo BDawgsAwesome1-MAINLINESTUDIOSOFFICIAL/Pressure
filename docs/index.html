@@ -1,102 +1,841 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Pressure — macOS memory guardian</title>
-  <meta name="description" content="Pressure watches your Mac's memory and quietly closes the apps you don't need before macOS force-quits them.">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="description" content="Pressure is a Dynamic Island for Mac. A side island with a timer, stopwatch, Now Playing, battery, calendar, and memory." />
+  <meta name="theme-color" content="#FFF8E7" />
+  <title>Pressure — a Dynamic Island for Mac</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' fill='%230e1420'/%3E%3Crect x='10' y='10' width='80' height='80' rx='10' fill='none' stroke='%235eb0f7' stroke-width='3'/%3E%3Crect x='25' y='25' width='50' height='50' rx='5' fill='%232b6cb0'/%3E%3C/svg%3E" />
   <style>
     :root {
-      color-scheme: dark;
-      --green: #30d158;
-      --ink: #f5f5f7;
-      --muted: rgba(245, 245, 247, 0.62);
-      --line: rgba(255, 255, 255, 0.1);
+      --glow-x: 0;
+      --glow-y: 0;
+      --glow-strength: 0.38;
+      --cream: #FFF8E7;
+      --cream-deep: #F5EBD0;
+      --peach: #FFD6C0;
+      --peach-soft: #FFE8DA;
+      --ink: #1E1A14;
+      --ink-soft: #4A4338;
+      --ink-faint: #7A7266;
+      --coral: #FF6B6B;
+      --coral-deep: #E84D4D;
+      --lime: #B8F255;
+      --lime-deep: #8FD12A;
+      --sky: #7EC8FF;
+      --sky-deep: #4AA8F0;
+      --grape: #B794F6;
+      --grape-deep: #9B6DEF;
+      --sun: #FFE566;
+      --card: #FFFEF9;
+      --line: #1E1A14;
+      --radius: 18px;
+      --radius-sm: 12px;
+      --font: ui-rounded, "Segoe UI", "Avenir Next", "Nunito Sans", system-ui, -apple-system, sans-serif;
+      --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+      --max: 1100px;
+      --border-w: 2.5px;
     }
-    * { box-sizing: border-box; }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html { scroll-behavior: smooth; -webkit-text-size-adjust: 100%; }
+
     body {
-      margin: 0;
-      min-height: 100vh;
-      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", sans-serif;
-      background: #000;
+      font-family: var(--font);
+      background:
+        radial-gradient(ellipse 70% 50% at 10% 0%, rgba(255, 229, 102, 0.45), transparent 55%),
+        radial-gradient(ellipse 55% 40% at 95% 8%, rgba(255, 107, 107, 0.22), transparent 50%),
+        radial-gradient(ellipse 50% 35% at 70% 100%, rgba(126, 200, 255, 0.28), transparent 50%),
+        radial-gradient(ellipse 40% 30% at 20% 90%, rgba(184, 242, 85, 0.25), transparent 45%),
+        var(--cream);
       color: var(--ink);
-      display: grid;
-      place-items: center;
-      padding: 32px 20px;
+      line-height: 1.55;
+      min-height: 100vh;
+      overflow-x: hidden;
+      text-transform: lowercase;
     }
-    main {
-      width: min(560px, 100%);
-      background: #0c0c0e;
-      border: 1px solid var(--line);
-      border-radius: 36px;
-      padding: 36px 32px 28px;
+
+    a {
+      color: var(--coral-deep);
+      text-decoration: none;
+      transition: color 0.15s ease, transform 0.15s ease, background 0.15s ease, box-shadow 0.15s ease;
     }
-    .mark {
-      width: 10px;
-      height: 72px;
-      border-radius: 999px;
-      background: var(--green);
-      box-shadow: 0 0 18px rgba(48, 209, 88, 0.7);
+    a:hover { color: var(--grape-deep); }
+    a:focus-visible {
+      outline: 3px solid var(--grape);
+      outline-offset: 3px;
+      border-radius: 4px;
     }
-    .top {
+
+    img, svg { max-width: 100%; display: block; }
+
+    .wrap {
+      position: relative;
+      z-index: 1;
+      width: min(100% - 2rem, var(--max));
+      margin-inline: auto;
+    }
+
+    .skip {
+      position: absolute;
+      left: -9999px;
+      top: 0;
+      background: var(--coral);
+      color: white;
+      padding: 0.5rem 1rem;
+      z-index: 100;
+    }
+    .skip:focus { left: 1rem; top: 1rem; }
+
+    .doodle {
+      position: fixed;
+      pointer-events: none;
+      z-index: 0;
+      opacity: 0.55;
+    }
+    .doodle-star {
+      top: 18%;
+      right: 4%;
+      font-size: 1.6rem;
+      color: var(--grape);
+      animation: spin-slow 14s linear infinite;
+    }
+    .doodle-squiggle {
+      bottom: 22%;
+      left: 3%;
+      width: 64px;
+      height: 28px;
+      border: 3px solid var(--sky);
+      border-radius: 50% 40% 60% 30%;
+      border-left-color: transparent;
+      border-top-color: transparent;
+      transform: rotate(-18deg);
+    }
+    .doodle-dot {
+      top: 55%;
+      right: 8%;
+      width: 14px;
+      height: 14px;
+      background: var(--lime);
+      border: 2px solid var(--ink);
+      border-radius: 50%;
+      box-shadow: 3px 3px 0 var(--ink);
+    }
+    @keyframes spin-slow {
+      from { transform: rotate(0deg); }
+      to { transform: rotate(360deg); }
+    }
+
+    .glow-orb {
+      position: fixed;
+      width: 280px;
+      height: 280px;
+      margin: -140px 0 0 -140px;
+      border-radius: 50%;
+      pointer-events: none;
+      z-index: 0;
+      opacity: 0.22;
+      background: radial-gradient(circle, rgba(110, 182, 245, 0.45) 0%, rgba(159, 208, 255, 0.18) 35%, transparent 68%);
+      mix-blend-mode: multiply;
+      transition: opacity 0.2s ease;
+    }
+
+    .site-header {
+      position: sticky;
+      top: 0;
+      z-index: 50;
+      background: rgba(255, 248, 231, 0.88);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      border-bottom: var(--border-w) solid var(--ink);
+    }
+
+    .nav {
       display: flex;
-      gap: 18px;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      padding: 0.75rem 0;
+      flex-wrap: wrap;
+    }
+
+    .logo {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.55rem;
+      color: var(--ink);
+    }
+    .logo:hover { color: var(--ink); transform: rotate(-1.5deg) scale(1.02); }
+    .logo-mark {
+      display: block;
+      width: 36px;
+      height: 36px;
+      border-radius: 10px;
+      border: 2px solid var(--ink);
+      box-shadow: 2px 2px 0 var(--coral);
+    }
+    .logo-text {
+      font-size: 1.15rem;
+      font-weight: 800;
+      letter-spacing: -0.03em;
+    }
+
+    .nav-links {
+      display: flex;
+      gap: 0.2rem;
+      list-style: none;
+      flex-wrap: wrap;
       align-items: center;
     }
-    h1 {
-      margin: 0;
-      font-size: 15px;
+    .nav-links a {
+      color: var(--ink-soft);
+      font-size: 0.92rem;
       font-weight: 600;
-      letter-spacing: 0.01em;
-      color: var(--muted);
-    }
-    .score {
-      margin: 2px 0 0;
-      font-size: 42px;
-      font-weight: 700;
-      letter-spacing: -0.04em;
-      color: var(--green);
-    }
-    p { color: var(--muted); line-height: 1.45; }
-    .lead { color: var(--ink); font-size: 22px; font-weight: 600; letter-spacing: -0.03em; margin: 22px 0 8px; }
-    a.download {
-      display: block;
-      margin-top: 22px;
-      text-align: center;
-      text-decoration: none;
-      color: #000;
-      background: var(--green);
-      font-weight: 650;
+      padding: 0.4rem 0.75rem;
       border-radius: 999px;
-      padding: 14px 18px;
     }
-    a.download:hover { filter: brightness(1.08); }
-    ol { margin: 8px 0 0; padding-left: 18px; color: var(--muted); }
-    li { margin: 6px 0; }
-    .note { font-size: 13px; }
-    footer { margin-top: 22px; font-size: 13px; color: var(--muted); }
-    footer a { color: var(--ink); }
+    .nav-links a:hover {
+      color: var(--ink);
+      background: var(--sun);
+    }
+    .nav-pill {
+      background: var(--ink) !important;
+      color: var(--cream) !important;
+      border: var(--border-w) solid var(--ink);
+      box-shadow: 3px 3px 0 var(--coral);
+    }
+    .nav-pill:hover {
+      background: var(--coral) !important;
+      color: white !important;
+      box-shadow: 3px 3px 0 var(--ink);
+    }
+
+    .hero { padding: 3.75rem 0 2.75rem; text-align: left; }
+
+    .hero-grid {
+      display: grid;
+      gap: 2rem;
+      align-items: center;
+    }
+    @media (min-width: 800px) {
+      .hero-grid { grid-template-columns: 1fr auto; }
+    }
+
+    .hero-sticker {
+      display: inline-block;
+      font-size: 0.82rem;
+      font-weight: 700;
+      color: var(--ink);
+      background: var(--lime);
+      border: var(--border-w) solid var(--ink);
+      padding: 0.35rem 0.85rem;
+      border-radius: 999px;
+      box-shadow: 3px 3px 0 var(--ink);
+      margin-bottom: 1.25rem;
+      transform: rotate(-2deg);
+    }
+
+    .hero h1 {
+      font-size: clamp(2.4rem, 6.5vw, 4.2rem);
+      font-weight: 800;
+      letter-spacing: -0.04em;
+      line-height: 1.05;
+      margin-bottom: 1rem;
+      color: var(--ink);
+    }
+    .hero-accent {
+      background: linear-gradient(transparent 62%, var(--sun) 62%);
+      padding: 0 0.1em;
+    }
+    .keep-case { text-transform: none; }
+
+    .hero-lead {
+      font-size: clamp(1.05rem, 2vw, 1.25rem);
+      color: var(--ink-soft);
+      max-width: 38rem;
+      margin-bottom: 1.75rem;
+      font-weight: 500;
+    }
+
+    .hero-actions { display: flex; gap: 0.75rem; flex-wrap: wrap; }
+
+    .hero-mark-wrap { position: relative; justify-self: center; }
+    .mark-wrap { position: relative; display: inline-grid; place-items: center; }
+    .mark-glow {
+      position: absolute;
+      inset: -28%;
+      border-radius: 40%;
+      pointer-events: none;
+      background: radial-gradient(
+        circle at calc(50% + var(--glow-x) * 28%) calc(50% + var(--glow-y) * 28%),
+        rgba(159, 208, 255, calc(0.65 * var(--glow-strength))) 0%,
+        rgba(94, 176, 247, calc(0.35 * var(--glow-strength))) 38%,
+        transparent 70%
+      );
+      filter: blur(2px);
+      z-index: 0;
+    }
+    .hero-mark {
+      position: relative;
+      z-index: 1;
+      width: 140px;
+      height: 140px;
+      border-radius: 28px;
+      border: var(--border-w) solid var(--ink);
+      background: #0e1420;
+      box-shadow:
+        6px 6px 0 var(--ink),
+        calc(var(--glow-x) * 14px) calc(var(--glow-y) * 14px)
+          calc(18px + var(--glow-strength) * 20px) rgba(110, 182, 245, calc(0.35 + var(--glow-strength) * 0.4)),
+        calc(var(--glow-x) * 26px) calc(var(--glow-y) * 26px)
+          calc(36px + var(--glow-strength) * 24px) rgba(43, 108, 176, calc(0.22 + var(--glow-strength) * 0.35));
+      transform: rotate(3deg);
+    }
+    .brand-lockup { z-index: 1; }
+    .hero-mark-sticker {
+      position: absolute;
+      bottom: -10px;
+      right: -18px;
+      font-size: 0.72rem;
+      font-weight: 800;
+      background: var(--peach);
+      border: 2px solid var(--ink);
+      padding: 0.25rem 0.55rem;
+      border-radius: 999px;
+      box-shadow: 2px 2px 0 var(--ink);
+      transform: rotate(6deg);
+      white-space: nowrap;
+    }
+
+    .island-demo {
+      width: 50px;
+      height: 72px;
+      margin: 0.6rem auto 0.2rem;
+      background: #000;
+      border-radius: 18px;
+      border: var(--border-w) solid var(--ink);
+      box-shadow: 4px 4px 0 var(--ink);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 4px;
+      color: #30d158;
+      transform: rotate(-6deg);
+    }
+    .island-demo span {
+      width: 16px;
+      height: 16px;
+      border-radius: 4px;
+      background: #ff6b6b;
+      box-shadow: none;
+    }
+    .island-demo strong {
+      font-size: 0.68rem;
+      letter-spacing: -0.03em;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      padding: 0.75rem 1.3rem;
+      border-radius: 999px;
+      font-size: 0.95rem;
+      font-weight: 700;
+      border: var(--border-w) solid var(--ink);
+      cursor: pointer;
+      text-transform: lowercase;
+      transition: transform 0.15s, box-shadow 0.15s, background 0.15s;
+    }
+    .btn:active { transform: scale(0.97); }
+    .btn-coral {
+      background: var(--coral);
+      color: white;
+      box-shadow: 4px 4px 0 var(--ink);
+    }
+    .btn-coral:hover {
+      background: var(--coral-deep);
+      color: white;
+      transform: translate(-1px, -1px);
+      box-shadow: 5px 5px 0 var(--ink);
+    }
+    .btn-outline {
+      background: var(--card);
+      color: var(--ink);
+      box-shadow: 4px 4px 0 var(--sky);
+    }
+    .btn-outline:hover {
+      background: var(--sky);
+      color: var(--ink);
+      transform: translate(-1px, -1px);
+      box-shadow: 5px 5px 0 var(--ink);
+    }
+
+    section { padding: 2.25rem 0 1rem; }
+    .section-head { margin-bottom: 1.4rem; }
+    .section-head h2 {
+      font-size: clamp(1.55rem, 3vw, 2rem);
+      font-weight: 800;
+      letter-spacing: -0.03em;
+      margin-bottom: 0.3rem;
+      display: inline-block;
+      background: linear-gradient(transparent 70%, var(--peach) 70%);
+    }
+    .section-head p {
+      color: var(--ink-soft);
+      font-size: 0.98rem;
+      font-weight: 500;
+      max-width: 40rem;
+    }
+    .wiggle {
+      display: inline-block;
+      color: var(--coral);
+      animation: wiggle 1.8s ease-in-out infinite;
+    }
+    @keyframes wiggle {
+      0%, 100% { transform: rotate(-8deg); }
+      50% { transform: rotate(10deg); }
+    }
+
+    .grid {
+      display: grid;
+      gap: 1.25rem;
+      grid-template-columns: 1fr;
+    }
+    @media (min-width: 640px) {
+      .grid { grid-template-columns: repeat(2, 1fr); }
+    }
+    @media (min-width: 960px) {
+      .grid-activities { grid-template-columns: repeat(3, 1fr); }
+    }
+
+    .card {
+      background: var(--card);
+      border: var(--border-w) solid var(--ink);
+      border-radius: var(--radius);
+      padding: 1.35rem 1.3rem 1.2rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+      position: relative;
+      box-shadow: 5px 5px 0 var(--ink);
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+    .card:hover {
+      transform: translate(-2px, -3px) rotate(0deg) !important;
+      box-shadow: 8px 8px 0 var(--ink);
+    }
+    .tilt-left { transform: rotate(-1.2deg); }
+    .tilt-right { transform: rotate(1.1deg); }
+    .card.featured { padding-top: 1.6rem; }
+    .accent-lime { background: linear-gradient(165deg, #F4FFD6 0%, var(--card) 45%); }
+    .accent-peach { background: linear-gradient(165deg, var(--peach-soft) 0%, var(--card) 45%); }
+    .accent-sky { background: linear-gradient(165deg, #E5F4FF 0%, var(--card) 45%); }
+
+    .sticker {
+      position: absolute;
+      top: -12px;
+      right: 14px;
+      font-size: 0.72rem;
+      font-weight: 800;
+      padding: 0.28rem 0.65rem;
+      border: 2px solid var(--ink);
+      border-radius: 999px;
+      box-shadow: 2px 2px 0 var(--ink);
+      transform: rotate(4deg);
+      z-index: 2;
+      white-space: nowrap;
+    }
+    .sticker-lime { background: var(--lime); }
+    .sticker-coral { background: var(--peach); }
+    .sticker-sky { background: var(--sky); }
+    .sticker-sun { background: var(--sun); }
+
+    .card h3 {
+      font-size: 1.2rem;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      line-height: 1.25;
+    }
+    .card-desc {
+      color: var(--ink-soft);
+      font-size: 0.92rem;
+      flex: 1;
+      font-weight: 500;
+    }
+    .card-top {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 0.75rem;
+    }
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      font-size: 0.7rem;
+      font-weight: 800;
+      letter-spacing: 0.02em;
+      padding: 0.22rem 0.6rem;
+      border-radius: 999px;
+      border: 2px solid var(--ink);
+      white-space: nowrap;
+    }
+    .pill-active {
+      color: var(--ink);
+      background: var(--lime);
+      box-shadow: 2px 2px 0 var(--ink);
+    }
+
+    .ship-steps {
+      list-style: none;
+      display: grid;
+      gap: 1.25rem;
+      margin-bottom: 1.5rem;
+    }
+    @media (min-width: 800px) {
+      .ship-steps { grid-template-columns: repeat(3, 1fr); }
+    }
+    .ship-step { flex-direction: column; gap: 0.65rem; }
+    .ship-num {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 2.4rem;
+      height: 2.4rem;
+      font-family: var(--mono);
+      font-size: 0.85rem;
+      font-weight: 800;
+      background: var(--sun);
+      border: 2px solid var(--ink);
+      border-radius: 12px;
+      box-shadow: 2px 2px 0 var(--ink);
+    }
+
+    .hang-banner {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      padding: 1.25rem 1.4rem;
+      background: linear-gradient(135deg, var(--peach-soft), #E5F4FF);
+      border: var(--border-w) solid var(--ink);
+      border-radius: var(--radius);
+      box-shadow: 5px 5px 0 var(--ink);
+    }
+    .hang-banner strong {
+      display: block;
+      font-size: 1.05rem;
+      font-weight: 800;
+      margin-bottom: 0.2rem;
+    }
+    .hang-banner p {
+      color: var(--ink-soft);
+      font-size: 0.9rem;
+      font-weight: 500;
+    }
+
+    .misc-note {
+      font-size: 0.88rem;
+      color: var(--ink-soft);
+      margin-top: 1.4rem;
+      padding: 0.95rem 1.1rem;
+      border: 2.5px dashed var(--ink);
+      border-radius: var(--radius-sm);
+      background: rgba(255, 229, 102, 0.25);
+      font-weight: 500;
+    }
+    .misc-label {
+      font-weight: 800;
+      color: var(--ink);
+      margin-right: 0.35rem;
+    }
+
+    .site-footer {
+      margin-top: 3rem;
+      padding: 2rem 0 2.5rem;
+      border-top: var(--border-w) solid var(--ink);
+      background: rgba(255, 214, 192, 0.35);
+    }
+    .footer-inner {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 1.5rem;
+      justify-content: space-between;
+      align-items: flex-start;
+    }
+    .footer-brand { max-width: 28rem; }
+    .footer-logo-row {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      margin-bottom: 0.35rem;
+    }
+    .footer-logo-row svg {
+      width: 28px;
+      height: 28px;
+      border-radius: 8px;
+      border: 2px solid var(--ink);
+    }
+    .footer-logo-row strong { font-size: 1.05rem; font-weight: 800; }
+    .footer-brand p {
+      color: var(--ink-soft);
+      font-size: 0.9rem;
+      font-weight: 500;
+    }
+    .footer-links { display: flex; flex-direction: column; gap: 0.45rem; }
+    .footer-links a { color: var(--ink-soft); font-size: 0.9rem; font-weight: 600; }
+    .footer-links a:hover { color: var(--coral-deep); }
+    .footer-copy {
+      width: 100%;
+      margin-top: 1.25rem;
+      padding-top: 1.1rem;
+      border-top: 2px dashed rgba(30, 26, 20, 0.3);
+      font-size: 0.8rem;
+      color: var(--ink-faint);
+      font-weight: 600;
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      html { scroll-behavior: auto; }
+      .card, .btn, a, .wiggle, .doodle-star { transition: none; animation: none; }
+      .card:hover { transform: none !important; }
+      .tilt-left, .tilt-right { transform: none; }
+      .glow-orb, .mark-glow { display: none; }
+    }
+    @media (max-width: 520px) {
+      .tilt-left, .tilt-right { transform: none; }
+      .doodle { display: none; }
+    }
   </style>
 </head>
 <body>
-  <main>
-    <div class="top">
-      <div class="mark" aria-hidden="true"></div>
-      <div>
-        <h1>macOS memory guardian</h1>
-        <p class="score">Pressure</p>
-      </div>
+  <div class="glow-orb" id="glowOrb" aria-hidden="true"></div>
+  <a class="skip" href="#main">skip to stuff</a>
+  <div class="doodle doodle-star" aria-hidden="true">✦</div>
+  <div class="doodle doodle-squiggle" aria-hidden="true"></div>
+  <div class="doodle doodle-dot" aria-hidden="true"></div>
+
+  <header class="site-header">
+    <div class="wrap nav">
+      <a class="logo" href="#top" aria-label="Pressure home">
+        <svg class="logo-mark" viewBox="0 0 100 100" width="36" height="36" aria-hidden="true">
+          <rect width="100" height="100" fill="#0e1420"/>
+          <rect x="10" y="10" width="80" height="80" rx="10" fill="none" stroke="#5eb0f7" stroke-width="3"/>
+          <rect x="25" y="25" width="50" height="50" rx="5" fill="#2b6cb0"/>
+        </svg>
+        <span class="logo-text">mainline · <span class="keep-case">Pressure</span></span>
+      </a>
+      <nav aria-label="primary">
+        <ul class="nav-links">
+          <li><a href="#activities">activities</a></li>
+          <li><a href="#install">install</a></li>
+          <li><a href="https://github.com/BDawgsAwesome1-MAINLINESTUDIOSOFFICIAL/Pressure" rel="noopener noreferrer">github</a></li>
+          <li><a class="nav-pill" href="Pressure.dmg">download</a></li>
+        </ul>
+      </nav>
     </div>
-    <p class="lead">Watches your Mac’s memory and closes the background apps you don’t need before macOS force-quits them.</p>
-    <p>A black pill sits on the left edge of the screen. Move the pointer there and it opens into controls for auto-close, warnings, and launch at login.</p>
-    <a class="download" href="Pressure.dmg">Download Pressure.dmg</a>
-    <ol>
-      <li>Open the disk image and drag Pressure into Applications.</li>
-      <li>Open Pressure from Applications. If macOS says the developer can’t be verified, right-click the app and choose Open.</li>
-      <li>Move the pointer to the middle of the left edge. The Hub opens there.</li>
-    </ol>
-    <p class="note">Requires macOS 13 or later. This build is ad-hoc signed and not notarized, so the first open needs the right-click step above.</p>
-    <footer>MIT License · <a href="https://github.com/BDawgsAwesome1-MAINLINESTUDIOSOFFICIAL/Pressure">Source</a></footer>
+  </header>
+
+  <main id="main">
+    <section class="hero" id="top">
+      <div class="wrap hero-grid">
+        <div class="hero-copy">
+          <p class="hero-sticker">side island · macOS 13 and later</p>
+          <h1>a dynamic island<br /><span class="hero-accent">for <span class="keep-case">Mac</span>.</span></h1>
+          <p class="hero-lead">
+            <span class="keep-case">Pressure</span> is mainline’s side island. A black pill sits on the left edge, springs open when the pointer hits the middle, and keeps one live activity in view. Same idea as a dynamic island — made for the <span class="keep-case">Mac</span>, not by <span class="keep-case">Apple</span>.
+          </p>
+          <div class="hero-actions">
+            <a class="btn btn-coral" href="Pressure.dmg">download <span class="keep-case">Pressure.dmg</span></a>
+            <a class="btn btn-outline" href="https://github.com/BDawgsAwesome1-MAINLINESTUDIOSOFFICIAL/Pressure" rel="noopener noreferrer">view source</a>
+          </div>
+        </div>
+        <div class="hero-mark-wrap brand-lockup" id="brandLockup">
+          <div class="mark-wrap">
+            <div class="mark-glow" aria-hidden="true"></div>
+            <svg class="hero-mark mark" viewBox="0 0 100 100" width="140" height="140" role="img" aria-label="Mainline Studios mark">
+              <rect width="100" height="100" fill="#0e1420"/>
+              <rect x="10" y="10" width="80" height="80" rx="10" fill="none" stroke="#5eb0f7" stroke-width="3"/>
+              <rect x="25" y="25" width="50" height="50" rx="5" fill="#2b6cb0"/>
+            </svg>
+          </div>
+          <div class="island-demo" aria-hidden="true"><strong>100%</strong><span></span></div>
+          <span class="hero-mark-sticker">side island ✓</span>
+        </div>
+      </div>
+    </section>
+
+    <section id="activities" aria-labelledby="activities-heading">
+      <div class="wrap">
+        <div class="section-head">
+          <h2 id="activities-heading">live activities <span class="wiggle" aria-hidden="true">~</span></h2>
+          <p>the compact pill shows whichever one matters most. hover the left edge and the card opens with the rest.</p>
+        </div>
+        <div class="grid grid-activities">
+          <article class="card featured tilt-left accent-peach">
+            <div class="sticker sticker-coral">highest</div>
+            <div class="card-top">
+              <h3>timer</h3>
+              <span class="pill pill-active">1 · 5 · 15 · 25</span>
+            </div>
+            <p class="card-desc">start, pause, or cancel. when it hits zero the island pops open on its own, then can fold back up.</p>
+          </article>
+          <article class="card featured tilt-right accent-lime">
+            <div class="sticker sticker-lime">running</div>
+            <div class="card-top">
+              <h3>stopwatch</h3>
+              <span class="pill pill-active">lap</span>
+            </div>
+            <p class="card-desc">start, stop, lap, and reset. the pill keeps the current time while it’s running, plus the last lap on the card.</p>
+          </article>
+          <article class="card featured tilt-left accent-sky">
+            <div class="sticker sticker-sky">music</div>
+            <div class="card-top">
+              <h3>now playing</h3>
+              <span class="pill pill-active">live</span>
+            </div>
+            <p class="card-desc">music and spotify. title, artist, play, pause, previous, next. hidden when neither app is running or nothing is playing.</p>
+          </article>
+          <article class="card tilt-right">
+            <div class="card-top">
+              <h3>battery</h3>
+              <span class="pill pill-active">or power</span>
+            </div>
+            <p class="card-desc">percent, charging, on battery, and a low-battery state. a desktop mac with no battery says power / ac instead of inventing one.</p>
+          </article>
+          <article class="card tilt-left accent-sky">
+            <div class="card-top">
+              <h3>calendar</h3>
+              <span class="pill pill-active">today</span>
+            </div>
+            <p class="card-desc">the next event today. tap it and calendar opens. if access is denied, or the day is clear, the row stays hidden.</p>
+          </article>
+          <article class="card tilt-right accent-peach">
+            <div class="card-top">
+              <h3>memory</h3>
+              <span class="pill pill-active">fallback</span>
+            </div>
+            <p class="card-desc">one live activity so the pill is never empty. percent, free memory, and a single auto-close switch. the rest of the settings stay in the settings window.</p>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section id="install" aria-labelledby="install-heading">
+      <div class="wrap">
+        <div class="section-head">
+          <h2 id="install-heading">get it on your mac <span class="wiggle" aria-hidden="true">~</span></h2>
+          <p>drag it in, then right-click open. the build is ad-hoc signed and not notarized, so that first open needs the extra click.</p>
+        </div>
+        <ol class="ship-steps">
+          <li class="card tilt-left ship-step">
+            <span class="ship-num">01</span>
+            <div>
+              <h3>open the disk image</h3>
+              <p class="card-desc">download <span class="keep-case">Pressure.dmg</span> and drag <span class="keep-case">Pressure</span> into applications.</p>
+            </div>
+          </li>
+          <li class="card tilt-right ship-step accent-lime">
+            <span class="ship-num">02</span>
+            <div>
+              <h3>right-click, then open</h3>
+              <p class="card-desc">if macOS says the developer can’t be verified, right-click <span class="keep-case">Pressure</span> in applications and choose open.</p>
+            </div>
+          </li>
+          <li class="card ship-step accent-peach">
+            <span class="ship-num">03</span>
+            <div>
+              <h3>find the left edge</h3>
+              <p class="card-desc">move the pointer to the vertical middle of the left edge. the pill morphs into the island.</p>
+            </div>
+          </li>
+        </ol>
+        <div class="hang-banner">
+          <div>
+            <strong>requires macOS 13 or later</strong>
+            <p>menu-bar app. no dock icon. the island stays on the left edge across spaces.</p>
+          </div>
+          <a class="btn btn-coral" href="Pressure.dmg">download <span class="keep-case">Pressure.dmg</span></a>
+        </div>
+        <p class="misc-note">
+          <span class="misc-label">public apis only →</span>
+          music, spotify, calendar, battery, and memory. no face id animation, airdrop, system phone calls, or live activities pushed in by other apps.
+        </p>
+      </div>
+    </section>
   </main>
+
+  <footer class="site-footer">
+    <div class="wrap footer-inner">
+      <div class="footer-brand">
+        <div class="footer-logo-row">
+          <svg viewBox="0 0 100 100" width="28" height="28" aria-hidden="true">
+            <rect width="100" height="100" fill="#0e1420"/>
+            <rect x="10" y="10" width="80" height="80" rx="10" fill="none" stroke="#5eb0f7" stroke-width="3"/>
+            <rect x="25" y="25" width="50" height="50" rx="5" fill="#2b6cb0"/>
+          </svg>
+          <strong>mainline studios</strong>
+        </div>
+        <p><span class="keep-case">Pressure</span> is a dynamic island for mac. the side pill is the product. memory auto-close is just one activity on it.</p>
+      </div>
+      <nav class="footer-links" aria-label="footer">
+        <a href="https://mainlinestudios.pixelplaceofficial.com/" rel="noopener noreferrer">studio</a>
+        <a href="https://github.com/BDawgsAwesome1-MAINLINESTUDIOSOFFICIAL/Pressure" rel="noopener noreferrer">source</a>
+        <a href="Pressure.dmg">download</a>
+      </nav>
+      <p class="footer-copy">© mainline · <span class="keep-case">Pressure</span> · mit license</p>
+    </div>
+  </footer>
+  <script>
+    (function () {
+      var root = document.documentElement;
+      var lockup = document.getElementById("brandLockup");
+      var orb = document.getElementById("glowOrb");
+      var reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+      if (!lockup || reduce) return;
+      var rect = null;
+      var targetX = 0, targetY = 0, curX = 0, curY = 0;
+      var strength = 0.4, targetStrength = 0.4;
+      function measure() { rect = lockup.getBoundingClientRect(); }
+      function onMove(e) {
+        if (!rect) measure();
+        var cx = rect.left + rect.width / 2;
+        var cy = rect.top + rect.height / 2;
+        var dx = (e.clientX - cx) / Math.max(rect.width * 0.85, 1);
+        var dy = (e.clientY - cy) / Math.max(rect.height * 0.85, 1);
+        var dist = Math.min(1, Math.hypot(dx, dy));
+        targetX = Math.max(-1, Math.min(1, dx));
+        targetY = Math.max(-1, Math.min(1, dy));
+        targetStrength = 0.3 + dist * 0.7;
+        if (orb) {
+          orb.style.left = e.clientX + "px";
+          orb.style.top = e.clientY + "px";
+          orb.style.opacity = String(0.28 + dist * 0.45);
+        }
+      }
+      function tick() {
+        curX += (targetX - curX) * 0.14;
+        curY += (targetY - curY) * 0.14;
+        strength += (targetStrength - strength) * 0.12;
+        root.style.setProperty("--glow-x", curX.toFixed(4));
+        root.style.setProperty("--glow-y", curY.toFixed(4));
+        root.style.setProperty("--glow-strength", strength.toFixed(4));
+        requestAnimationFrame(tick);
+      }
+      measure();
+      window.addEventListener("resize", measure);
+      window.addEventListener("scroll", measure, { passive: true });
+      window.addEventListener("pointermove", onMove, { passive: true });
+      document.addEventListener("pointerleave", function () {
+        targetX = 0; targetY = 0; targetStrength = 0.35;
+        if (orb) orb.style.opacity = "0.22";
+      });
+      requestAnimationFrame(tick);
+    })();
+  </script>
 </body>
 </html>

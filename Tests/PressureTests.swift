@@ -127,6 +127,65 @@ struct PressureTests {
         check(!hot.contains(x: 4, y: 200), "the top of the left edge does not open the hub")
         check(!hot.contains(x: 400, y: 800), "the middle of the screen does not open the hub")
         check(HubLayout.innerCornerRadius == HubLayout.expandedCornerRadius - HubLayout.contentMargin, "inner corners stay concentric with the island")
+        check(HubLayout.expandedCornerRadius == 44, "expanded island keeps a 44pt corner")
+        check(HubLayout.collapsedWidth >= 72, "compact pill fits an icon and a short label")
+
+        let timerFirst = IslandPriority.compact(IslandCandidates(
+            timerRunning: true,
+            stopwatchRunning: true,
+            nowPlaying: true,
+            hasPower: true,
+            hasCalendarEvent: true
+        ))
+        check(timerFirst == .timer, "a running timer wins the compact pill")
+
+        let stopwatchNext = IslandPriority.compact(IslandCandidates(
+            stopwatchRunning: true,
+            nowPlaying: true,
+            hasPower: true,
+            hasCalendarEvent: true
+        ))
+        check(stopwatchNext == .stopwatch, "a running stopwatch beats now playing")
+
+        let playingNext = IslandPriority.compact(IslandCandidates(
+            nowPlaying: true,
+            hasPower: true,
+            hasCalendarEvent: true
+        ))
+        check(playingNext == .nowPlaying, "now playing beats battery")
+
+        let batteryNext = IslandPriority.compact(IslandCandidates(hasPower: true, hasCalendarEvent: true))
+        check(batteryNext == .battery, "battery beats the next event")
+
+        let eventNext = IslandPriority.compact(IslandCandidates(hasCalendarEvent: true))
+        check(eventNext == .calendar, "calendar shows when power is unavailable")
+
+        let memoryFallback = IslandPriority.compact(IslandCandidates())
+        check(memoryFallback == .memory, "memory is the fallback activity")
+
+        let alertFace = IslandPriority.compact(IslandCandidates(timerAlert: true, hasPower: true))
+        check(alertFace == .timer, "a finished timer keeps the pill until the alert ends")
+
+        check(IslandTimeFormat.countdown(65) == "1:05", "countdown formats minutes")
+        check(IslandTimeFormat.countdown(3600) == "1:00:00", "countdown formats hours")
+        check(IslandTimeFormat.stopwatch(65.1) == "1:05.1", "stopwatch keeps a tenth")
+
+        let sample = "music\tplaying\tIsland\tMainline\nspotify\tpaused\tOther\tBand\n"
+        let chosen = NowPlayingParser.choose(from: sample)
+        check(chosen?.source == .music && chosen?.title == "Island" && chosen?.isPlaying == true, "playing Music wins over paused Spotify")
+        check(NowPlayingParser.choose(from: "music\tstopped\t\t\n") == nil, "a stopped player is hidden")
+        let pausedTrack = NowPlayingParser.choose(from: "spotify\tpaused\tTide\tPool\n")
+        check(pausedTrack?.isPlaying == false && pausedTrack?.artist == "Pool", "paused playback stays available for the expanded row")
+        let safari = NowPlayingParser.choose(from: "music\tpaused\tSong\tBand\nsafari\tplaying\tClip\tPage\thttps://example.com/cover.jpg\n")
+        check(safari?.source == .safari && safari?.isPlaying == true, "playing Safari media beats paused Music")
+        check(safari?.artworkURL == "https://example.com/cover.jpg", "Safari artwork URL is kept")
+
+        let power = PowerReader.read()
+        if power.mode == .battery {
+            check((0...100).contains(power.percent ?? -1), "battery percent is in range, got \(power.percent ?? -1)")
+        } else {
+            check(power.compactText == "Power", "a desktop Mac shows Power instead of a fake battery")
+        }
 
         if let snapshot = MemoryReader.read() {
             check((0...100).contains(snapshot.pressureScore), "live pressure score is in range, got \(snapshot.pressureScore)")

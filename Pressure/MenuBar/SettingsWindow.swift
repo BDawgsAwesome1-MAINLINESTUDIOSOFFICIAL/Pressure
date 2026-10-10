@@ -231,7 +231,7 @@ struct SettingsView: View {
         set: @escaping (Double) -> Void
     ) -> some View {
         let lower = range.lowerBound
-        let upper = max(range.upperBound, lower)
+        let upper = max(range.upperBound, lower + 1)
         return LabeledContent(title) {
             HStack {
                 Slider(value: Binding(get: { value }, set: set), in: lower...upper, step: 1)

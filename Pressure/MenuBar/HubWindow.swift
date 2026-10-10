@@ -12,6 +12,8 @@ final class HubController: ObservableObject {
     private var collapseGeneration = 0
     private var collapsePending = false
     private var previewLocked = false
+    private var alertHold = false
+    private var alertToken = 0
 
     init(model: PressureAppModel) {
         self.model = model
@@ -31,12 +33,16 @@ final class HubController: ObservableObject {
         panel.hidesOnDeactivate = false
         panel.isExcludedFromWindowsMenu = true
         panel.isMovable = false
-        panel.title = "Pressure Hub"
+        panel.title = "Pressure"
         panel.identifier = NSUserInterfaceItemIdentifier("PressureHub")
 
         let host = NSHostingController(rootView: HubView(model: model, hub: self))
         host.view.autoresizingMask = [.width, .height]
         panel.contentView = host.view
+
+        model.island.onAlert = { [weak self] in
+            self?.presentAlert()
+        }
     }
 
     func start() {
@@ -61,7 +67,24 @@ final class HubController: ObservableObject {
 
     func collapse() {
         guard !previewLocked else { return }
+        alertHold = false
         place(expanded: false, on: anchoredScreen ?? NSScreen.main, animated: true)
+    }
+
+    private func presentAlert() {
+        guard !previewLocked else { return }
+        alertHold = true
+        cancelCollapse()
+        let screen = anchoredScreen ?? NSScreen.main ?? NSScreen.screens.first
+        place(expanded: true, on: screen, animated: true)
+        alertToken += 1
+        let token = alertToken
+        Task { @MainActor in
+            try? await Task.sleep(for: .seconds(4.2))
+            guard token == self.alertToken else { return }
+            self.alertHold = false
+            self.trackPointer()
+        }
     }
 
     private func trackPointer() {
@@ -95,7 +118,9 @@ final class HubController: ObservableObject {
                 place(expanded: true, on: screen, animated: true)
             }
         } else if isExpanded {
-            scheduleCollapse()
+            if !alertHold {
+                scheduleCollapse()
+            }
         } else if anchoredScreen != screen {
             anchoredScreen = screen
             place(expanded: false, on: screen, animated: false)
@@ -103,7 +128,7 @@ final class HubController: ObservableObject {
     }
 
     private func scheduleCollapse() {
-        guard !collapsePending else { return }
+        guard !collapsePending, !alertHold else { return }
         collapsePending = true
         collapseGeneration += 1
         let generation = collapseGeneration
@@ -111,7 +136,7 @@ final class HubController: ObservableObject {
             try? await Task.sleep(for: .milliseconds(420))
             guard generation == self.collapseGeneration else { return }
             self.collapsePending = false
-            guard !self.previewLocked else { return }
+            guard !self.previewLocked, !self.alertHold else { return }
             self.place(expanded: false, on: self.anchoredScreen ?? NSScreen.main, animated: true)
         }
     }
@@ -146,220 +171,393 @@ final class HubController: ObservableObject {
 }
 
 struct HubView: View {
+    @ObservedObject var island: IslandModel
     @ObservedObject var monitor: MemoryMonitor
     @ObservedObject var configStore: ConfigStore
     @ObservedObject var hub: HubController
     var showSettings: () -> Void
-    var setLaunchAtLogin: (Bool) -> Void
-    var loginStatus: () -> String
 
     init(model: PressureAppModel, hub: HubController) {
+        island = model.island
         monitor = model.monitor
         configStore = model.configStore
         self.hub = hub
         showSettings = { model.showSettings() }
-        setLaunchAtLogin = { model.setLaunchAtLogin($0) }
-        loginStatus = { model.loginItemStatus }
     }
 
     var body: some View {
-        HStack(alignment: .center, spacing: 0) {
+        Group {
             if hub.isExpanded {
-                Capsule()
-                    .fill(pressureColor)
-                    .frame(width: 6)
-                    .padding(.vertical, 22)
-                    .padding(.trailing, 14)
-                controls
-                    .transition(.opacity)
+                expandedCard
             } else {
-                liveColumn
+                compactPill
             }
         }
-        .padding(.horizontal, hub.isExpanded ? CGFloat(HubLayout.contentMargin) : 6)
-        .padding(.vertical, hub.isExpanded ? 18 : 10)
+        .padding(.horizontal, hub.isExpanded ? CGFloat(HubLayout.contentMargin) : 8)
+        .padding(.vertical, hub.isExpanded ? 10 : 12)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(Color.black)
         .clipShape(RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
         .overlay {
             RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-                .strokeBorder(Color.white.opacity(0.16), lineWidth: 1)
+                .strokeBorder(accent.opacity(0.55), lineWidth: 1.5)
         }
         .animation(.spring(response: 0.48, dampingFraction: 0.76), value: hub.isExpanded)
         .accessibilityElement(children: .contain)
-        .accessibilityLabel("Pressure Hub")
+        .accessibilityLabel("Pressure, a Dynamic Island for Mac")
+        .accessibilityIdentifier("PressureIsland")
     }
 
     private var cornerRadius: CGFloat {
         CGFloat(hub.isExpanded ? HubLayout.expandedCornerRadius : HubLayout.collapsedCornerRadius)
     }
 
-    private var liveColumn: some View {
-        VStack(spacing: hub.isExpanded ? 10 : 8) {
-            Circle()
-                .fill(pressureColor)
-                .frame(width: hub.isExpanded ? 12 : 10, height: hub.isExpanded ? 12 : 10)
-                .shadow(color: pressureColor.opacity(0.85), radius: 8)
-            Text(scoreText)
-                .font(.system(size: hub.isExpanded ? 22 : 13, weight: .bold, design: .rounded))
-                .foregroundStyle(.white)
-                .monospacedDigit()
-                .minimumScaleFactor(0.7)
-                .lineLimit(1)
+    private var compactPill: some View {
+        VStack(spacing: 8) {
+            Image(systemName: island.compactSymbol)
+                .font(.system(size: 16, weight: .bold))
+                .foregroundStyle(accent)
+                .shadow(color: accent.opacity(0.85), radius: 8)
+            Text(island.compactText)
+                .font(.system(size: 12, weight: .bold, design: .rounded))
+                .foregroundStyle(accent)
+                .multilineTextAlignment(.center)
+                .lineLimit(3)
+                .minimumScaleFactor(0.55)
         }
-        .frame(width: hub.isExpanded ? 64 : nil)
-        .frame(maxHeight: .infinity)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
-    private var controls: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            VStack(alignment: .leading, spacing: 2) {
-                HStack(alignment: .firstTextBaseline) {
-                    Text("Hub")
-                        .font(.system(size: 13, weight: .semibold))
-                        .foregroundStyle(.white.opacity(0.55))
-                    Spacer(minLength: 8)
-                    Text(scoreText)
-                        .font(.system(size: 28, weight: .bold, design: .rounded))
-                        .foregroundStyle(pressureColor)
-                        .monospacedDigit()
+    private var expandedCard: some View {
+        HStack(alignment: .center, spacing: 0) {
+            Capsule()
+                .fill(accent)
+                .frame(width: 6)
+                .padding(.vertical, 8)
+                .padding(.trailing, 12)
+            VStack(alignment: .leading, spacing: 8) {
+                header
+                nowPlayingRow
+                timerRow
+                stopwatchRow
+                powerRow
+                if island.nextEvent != nil {
+                    eventRow
                 }
-                Text(availableText)
-                    .font(.system(size: 20, weight: .semibold, design: .rounded))
-                    .foregroundStyle(.white)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.8)
+                memoryRow
+                Button(action: {
+                    hub.collapse()
+                    showSettings()
+                }) {
+                    Text("Settings")
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundStyle(.white.opacity(0.72))
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 4)
+                }
+                .buttonStyle(.plain)
             }
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        }
+    }
 
-            VStack(spacing: 0) {
-                hubToggle("Auto-close", systemImage: "arrow.down.app", keyPath: \.autoCloseEnabled)
-                hairline
-                hubToggle("Warning alerts", systemImage: "bell", keyPath: \.notifyOnWarning)
-                hairline
-                hubToggle("Before quit", systemImage: "bell.badge", keyPath: \.notifyBeforeAutoClose)
-                hairline
-                launchRow
-            }
-            .background(Color.white.opacity(0.08), in: RoundedRectangle(cornerRadius: CGFloat(HubLayout.innerCornerRadius), style: .continuous))
-
-            if let status = loginMessage {
-                Text(status)
-                    .font(.system(size: 11))
+    private var header: some View {
+        Button(action: openHeader) {
+            VStack(alignment: .leading, spacing: 2) {
+                Text(island.headerTitle)
+                    .font(.system(size: 13, weight: .semibold))
                     .foregroundStyle(.white.opacity(0.55))
-                    .fixedSize(horizontal: false, vertical: true)
+                Text(island.headerValue)
+                    .font(.system(size: 28, weight: .bold, design: .rounded))
+                    .foregroundStyle(accent)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.5)
+                if island.compactKind == .nowPlaying, let artist = island.media?.artist, !artist.isEmpty {
+                    Text(artist)
+                        .font(.system(size: 13, weight: .medium))
+                        .foregroundStyle(.white.opacity(0.78))
+                        .lineLimit(1)
+                }
             }
+            .frame(maxWidth: .infinity, alignment: .leading)
+        }
+        .buttonStyle(.plain)
+    }
 
-            if !topApps.isEmpty {
-                VStack(alignment: .leading, spacing: 6) {
-                    Text("Using the most")
-                        .font(.system(size: 11, weight: .semibold))
-                        .foregroundStyle(.white.opacity(0.45))
-                    ForEach(topApps) { app in
-                        HStack {
-                            Text(app.name)
+    private var nowPlayingRow: some View {
+        row {
+            VStack(alignment: .leading, spacing: 8) {
+                Button(action: island.openNowPlaying) {
+                    HStack(spacing: 8) {
+                        Image(systemName: "music.note")
+                            .foregroundStyle(Color(nsColor: .systemPink))
+                        VStack(alignment: .leading, spacing: 1) {
+                            Text(nowPlayingTitle)
+                                .font(.system(size: 13, weight: .semibold))
+                                .foregroundStyle(.white)
                                 .lineLimit(1)
-                            Spacer(minLength: 8)
-                            Text(ByteFormat.string(app.residentBytes))
-                                .monospacedDigit()
+                            Text(nowPlayingSubtitle)
+                                .font(.system(size: 11, weight: .medium))
+                                .foregroundStyle(.white.opacity(0.55))
+                                .lineLimit(1)
                         }
-                        .font(.system(size: 12, weight: .medium))
-                        .foregroundStyle(.white.opacity(0.88))
+                        Spacer(minLength: 4)
                     }
                 }
+                .buttonStyle(.plain)
+                HStack(spacing: 8) {
+                    transport("backward.fill", action: island.previousTrack)
+                    transport(island.media?.isPlaying == true ? "pause.fill" : "play.fill", action: island.playPause)
+                    transport("forward.fill", action: island.nextTrack)
+                }
             }
-
-            Button(action: {
-                hub.collapse()
-                showSettings()
-            }) {
-                Text("All Settings")
-                    .font(.system(size: 13, weight: .semibold))
-                    .foregroundStyle(.white)
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 9)
-                    .background(Color.white.opacity(0.1), in: Capsule())
-            }
-            .buttonStyle(.plain)
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
     }
 
-    private var hairline: some View {
-        Rectangle()
-            .fill(Color.white.opacity(0.08))
-            .frame(height: 1)
-            .padding(.leading, 46)
-    }
-
-    private var launchRow: some View {
-        hubToggleButton(
-            title: "Launch at login",
-            systemImage: "power",
-            isOn: configStore.config.launchAtLogin,
-            set: setLaunchAtLogin
-        )
-    }
-
-    private func hubToggle(
-        _ title: String,
-        systemImage: String,
-        keyPath: WritableKeyPath<AppConfig, Bool>
-    ) -> some View {
-        hubToggleButton(
-            title: title,
-            systemImage: systemImage,
-            isOn: configStore.config[keyPath: keyPath],
-            set: { newValue in
-                configStore.update { $0[keyPath: keyPath] = newValue }
+    private var timerRow: some View {
+        row {
+            VStack(alignment: .leading, spacing: 8) {
+                HStack {
+                    Label("Timer", systemImage: "timer")
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundStyle(.white.opacity(0.55))
+                    Spacer()
+                    Text(island.alertMessage ?? IslandTimeFormat.countdown(island.displayedRemaining))
+                        .font(.system(size: 28, weight: .bold, design: .rounded))
+                        .foregroundStyle(Color(nsColor: .systemOrange))
+                        .monospacedDigit()
+                }
+                HStack(spacing: 6) {
+                    preset("1", minutes: 1)
+                    preset("5", minutes: 5)
+                    preset("15", minutes: 15)
+                    preset("25", minutes: 25)
+                }
+                HStack(spacing: 6) {
+                    actionChip("Start", enabled: island.countdown.phase != .running, action: island.startTimer)
+                    actionChip("Pause", enabled: island.countdown.phase == .running, action: island.pauseTimer)
+                    actionChip("Cancel", enabled: island.countdown.phase != .idle, action: island.cancelTimer)
+                }
             }
-        )
+        }
     }
 
-    private func hubToggleButton(
-        title: String,
-        systemImage: String,
-        isOn: Bool,
-        set: @escaping (Bool) -> Void
-    ) -> some View {
-        HStack(spacing: 10) {
-            Image(systemName: systemImage)
-                .font(.system(size: 13, weight: .semibold))
-                .foregroundStyle(isOn ? pressureColor : Color.white.opacity(0.9))
-                .frame(width: 28, height: 28)
-                .background(
-                    Color.white.opacity(isOn ? 0.16 : 0.08),
-                    in: RoundedRectangle(cornerRadius: 8, style: .continuous)
-                )
+    private var stopwatchRow: some View {
+        row {
+            VStack(alignment: .leading, spacing: 8) {
+                HStack {
+                    Label("Stopwatch", systemImage: "stopwatch")
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundStyle(.white.opacity(0.55))
+                    Spacer()
+                    Text(IslandTimeFormat.stopwatch(island.stopwatch.elapsed))
+                        .font(.system(size: 28, weight: .bold, design: .rounded))
+                        .foregroundStyle(Color(nsColor: .systemYellow))
+                        .monospacedDigit()
+                }
+                if let lap = island.stopwatch.lastLap {
+                    Text("Last lap \(IslandTimeFormat.stopwatch(lap))")
+                        .font(.system(size: 12, weight: .medium, design: .rounded))
+                        .foregroundStyle(.white.opacity(0.7))
+                        .monospacedDigit()
+                }
+                HStack(spacing: 6) {
+                    actionChip(island.stopwatch.phase == .running ? "Stop" : "Start", enabled: true, action: island.toggleStopwatch)
+                    actionChip("Lap", enabled: island.stopwatch.phase == .running, action: island.lap)
+                    actionChip("Reset", enabled: island.stopwatch.phase != .idle || island.stopwatch.elapsed > 0, action: island.resetStopwatch)
+                }
+            }
+        }
+    }
+
+    private var powerRow: some View {
+        Button(action: island.openPowerSettings) {
+            row {
+                HStack(spacing: 10) {
+                    Image(systemName: island.power.symbolName)
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundStyle(powerColor)
+                        .frame(width: 28)
+                    VStack(alignment: .leading, spacing: 1) {
+                        Text(island.power.title)
+                            .font(.system(size: 13, weight: .semibold))
+                            .foregroundStyle(.white)
+                        Text(island.power.detail)
+                            .font(.system(size: 11, weight: .medium))
+                            .foregroundStyle(.white.opacity(0.55))
+                    }
+                    Spacer(minLength: 8)
+                    Text(island.power.mode == .ac ? "AC" : island.power.compactText)
+                        .font(.system(size: 20, weight: .bold, design: .rounded))
+                        .foregroundStyle(powerColor)
+                        .monospacedDigit()
+                }
+            }
+        }
+        .buttonStyle(.plain)
+    }
+
+    private var eventRow: some View {
+        Button(action: island.openCalendar) {
+            row {
+                HStack(spacing: 10) {
+                    Image(systemName: "calendar")
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundStyle(Color(nsColor: .systemBlue))
+                        .frame(width: 28)
+                    VStack(alignment: .leading, spacing: 1) {
+                        Text(island.nextEvent?.title ?? "Calendar")
+                            .font(.system(size: 13, weight: .semibold))
+                            .foregroundStyle(.white)
+                            .lineLimit(1)
+                        if let event = island.nextEvent {
+                            Text(island.eventTime(event))
+                                .font(.system(size: 11, weight: .medium))
+                                .foregroundStyle(.white.opacity(0.55))
+                        }
+                    }
+                    Spacer(minLength: 4)
+                }
+            }
+        }
+        .buttonStyle(.plain)
+    }
+
+    private var memoryRow: some View {
+        row {
+            HStack(spacing: 10) {
+                Image(systemName: "gauge.with.dots.needle.33percent")
+                    .font(.system(size: 15, weight: .semibold))
+                    .foregroundStyle(memoryColor)
+                    .frame(width: 28)
+                VStack(alignment: .leading, spacing: 1) {
+                    Text("Memory \(island.memoryPercent)")
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundStyle(.white)
+                    Text(island.memoryFree)
+                        .font(.system(size: 11, weight: .medium))
+                        .foregroundStyle(.white.opacity(0.55))
+                }
+                Spacer(minLength: 6)
+                Button(action: {
+                    configStore.update { $0.autoCloseEnabled.toggle() }
+                }) {
+                    Text(configStore.config.autoCloseEnabled ? "Auto-close on" : "Auto-close off")
+                        .font(.system(size: 11, weight: .bold))
+                        .foregroundStyle(.white)
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 6)
+                        .background(
+                            configStore.config.autoCloseEnabled ? memoryColor.opacity(0.9) : Color.white.opacity(0.14),
+                            in: Capsule()
+                        )
+                }
+                .buttonStyle(.plain)
+            }
+        }
+    }
+
+    private func row<Content: View>(@ViewBuilder _ content: () -> Content) -> some View {
+        content()
+            .padding(.horizontal, 12)
+            .padding(.vertical, 10)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(
+                Color.white.opacity(0.08),
+                in: RoundedRectangle(cornerRadius: CGFloat(HubLayout.innerCornerRadius), style: .continuous)
+            )
+    }
+
+    private func preset(_ title: String, minutes: Int) -> some View {
+        let selected = Int(island.countdown.presetSeconds / 60) == minutes
+        return Button(action: { island.startPreset(minutes: minutes) }) {
             Text(title)
-                .font(.system(size: 13, weight: .medium))
+                .font(.system(size: 13, weight: .bold, design: .rounded))
                 .foregroundStyle(.white)
-                .lineLimit(1)
-            Spacer(minLength: 4)
-            Toggle(title, isOn: Binding(get: { isOn }, set: set))
-                .toggleStyle(.switch)
-                .labelsHidden()
-                .tint(pressureColor)
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 7)
+                .background(selected ? Color(nsColor: .systemOrange) : Color.white.opacity(0.12), in: Capsule())
         }
-        .padding(.horizontal, 10)
-        .padding(.vertical, 7)
-        .accessibilityElement(children: .combine)
+        .buttonStyle(.plain)
+        .accessibilityLabel("\(title) minute timer")
     }
 
-    private var topApps: [AppFootprint] {
-        Array(monitor.topFootprints.prefix(3))
+    private func actionChip(_ title: String, enabled: Bool, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Text(title)
+                .font(.system(size: 12, weight: .semibold))
+                .foregroundStyle(enabled ? .white : .white.opacity(0.35))
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 7)
+                .background(Color.white.opacity(enabled ? 0.14 : 0.06), in: Capsule())
+        }
+        .buttonStyle(.plain)
+        .disabled(!enabled)
     }
 
-    private var scoreText: String {
-        guard let snapshot = monitor.snapshot else { return "—" }
-        return PercentFormat.string(snapshot.displayScore(config: configStore.config))
+    private func transport(_ symbol: String, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Image(systemName: symbol)
+                .font(.system(size: 13, weight: .bold))
+                .foregroundStyle(.white)
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 8)
+                .background(Color.white.opacity(0.12), in: Capsule())
+        }
+        .buttonStyle(.plain)
     }
 
-    private var availableText: String {
-        guard let snapshot = monitor.snapshot else { return "Reading memory" }
-        return "\(ByteFormat.string(snapshot.availableBytes)) free"
+    private var nowPlayingTitle: String {
+        let title = island.media?.title.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        return title.isEmpty ? "Not playing" : title
     }
 
-    private var pressureColor: Color {
+    private var nowPlayingSubtitle: String {
+        guard let media = island.media else { return "Music or Spotify" }
+        let artist = media.artist.trimmingCharacters(in: .whitespacesAndNewlines)
+        let state = media.isPlaying ? "Playing" : "Paused"
+        if artist.isEmpty { return "\(media.source.appName) · \(state)" }
+        return "\(artist) · \(media.source.appName)"
+    }
+
+    private func openHeader() {
+        switch island.compactKind {
+        case .nowPlaying:
+            island.openNowPlaying()
+        case .calendar:
+            island.openCalendar()
+        case .battery:
+            island.openPowerSettings()
+        case .timer, .stopwatch, .memory:
+            break
+        }
+    }
+
+    private var accent: Color {
+        switch island.compactKind {
+        case .timer:
+            return Color(nsColor: .systemOrange)
+        case .stopwatch:
+            return Color(nsColor: .systemYellow)
+        case .nowPlaying:
+            return Color(nsColor: .systemPink)
+        case .battery:
+            return powerColor
+        case .calendar:
+            return Color(nsColor: .systemBlue)
+        case .memory:
+            return memoryColor
+        }
+    }
+
+    private var powerColor: Color {
+        if island.power.isLow { return Color(nsColor: .systemRed) }
+        if island.power.isCharging { return Color(nsColor: .systemGreen) }
+        if island.power.mode == .ac { return Color(nsColor: .systemYellow) }
+        return Color(nsColor: .systemGreen)
+    }
+
+    private var memoryColor: Color {
         let level = monitor.snapshot?.level(config: configStore.config) ?? .ok
         switch level {
         case .ok:
@@ -369,10 +567,5 @@ struct HubView: View {
         case .critical:
             return Color(nsColor: .systemRed)
         }
-    }
-
-    private var loginMessage: String? {
-        let status = loginStatus()
-        return status.isEmpty ? nil : status
     }
 }

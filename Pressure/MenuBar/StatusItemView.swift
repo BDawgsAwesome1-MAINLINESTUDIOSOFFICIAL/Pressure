@@ -47,9 +47,10 @@ final class StatusItemController: NSObject, NSMenuDelegate {
         let config = model.configStore.config
         let snapshot = model.monitor.snapshot
 
+        menu.addItem(header("A Dynamic Island for Mac"))
         if let snapshot {
             let score = snapshot.displayScore(config: config)
-            menu.addItem(header("Pressure  \(PercentFormat.string(score))"))
+            menu.addItem(header("Memory  \(PercentFormat.string(score))"))
             menu.addItem(header("Available  \(ByteFormat.string(snapshot.availableBytes))"))
             menu.addItem(header("Wired  \(ByteFormat.string(snapshot.wiredBytes))"))
             menu.addItem(header("Compressed  \(ByteFormat.string(snapshot.compressedBytes))"))
