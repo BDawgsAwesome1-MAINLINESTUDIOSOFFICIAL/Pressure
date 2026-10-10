@@ -70,6 +70,17 @@ rep.size = NSSize(width: width, height: height)
 let cream = rgb(255, 248, 231)
 let ink = rgb(30, 26, 20)
 let coral = rgb(255, 107, 107)
+let lime = rgb(143, 209, 42)
+let sky = rgb(74, 168, 240)
+let grape = rgb(155, 109, 239)
+
+// Replace this list for each release. The disk image shows only what is new.
+let features: [(String, NSColor)] = [
+    ("iMessage", lime),
+    ("GitHub Actions", grape),
+    ("Cursor", sky),
+    ("Reset", coral),
+]
 
 NSGraphicsContext.saveGraphicsState()
 NSGraphicsContext.current = NSGraphicsContext(bitmapImageRep: rep)
@@ -106,6 +117,44 @@ head.line(to: NSPoint(x: 378, y: 188))
 head.close()
 coral.setFill()
 head.fill()
+
+let featureFont = rounded(13, .bold)
+let featureAttrs: [NSAttributedString.Key: Any] = [.font: featureFont, .foregroundColor: ink]
+let featureSizes = features.map { ($0.0 as NSString).size(withAttributes: featureAttrs) }
+let featureGap: CGFloat = 8
+let featurePadX: CGFloat = 22
+let featureHeight = (featureSizes.map(\.height).max() ?? 16) + 12
+let featureWidth = featureSizes.reduce(CGFloat(0)) { $0 + $1.width + featurePadX } + featureGap * CGFloat(features.count - 1)
+var featureX = (CGFloat(width) - featureWidth) / 2
+let featureY: CGFloat = 112
+for (index, feature) in features.enumerated() {
+    let textSize = featureSizes[index]
+    let rect = NSRect(x: featureX, y: featureY, width: textSize.width + featurePadX, height: featureHeight)
+    ink.setFill()
+    NSBezierPath(roundedRect: rect.offsetBy(dx: 3, dy: -3), xRadius: 12, yRadius: 12).fill()
+    cream.setFill()
+    let chip = NSBezierPath(roundedRect: rect, xRadius: 12, yRadius: 12)
+    chip.fill()
+    ink.setStroke()
+    chip.lineWidth = 2.5
+    chip.stroke()
+    feature.1.setFill()
+    NSBezierPath(ovalIn: NSRect(x: rect.minX + 8, y: rect.midY - 4, width: 8, height: 8)).fill()
+    (feature.0 as NSString).draw(
+        at: NSPoint(x: rect.minX + 20, y: rect.minY + 6),
+        withAttributes: featureAttrs
+    )
+    featureX += rect.width + featureGap
+}
+
+let kicker = "new" as NSString
+let kickerFont = rounded(13, .heavy)
+let kickerAttrs: [NSAttributedString.Key: Any] = [.font: kickerFont, .foregroundColor: coral]
+let kickerSize = kicker.size(withAttributes: kickerAttrs)
+kicker.draw(
+    at: NSPoint(x: (CGFloat(width) - kickerSize.width) / 2, y: featureY + featureHeight + 8),
+    withAttributes: kickerAttrs
+)
 
 let label = "drag into Applications" as NSString
 let labelFont = rounded(20, .bold)
