@@ -2,7 +2,7 @@ import Foundation
 
 /// Geometry for the side island. Coordinates use AppKit screen space
 /// (origin at the bottom left). The compact pill sits on the left edge,
-/// centered vertically, and the expanded card grows from that same center.
+/// centered vertically, and grows only for the rows that are actually live.
 struct HubBox: Equatable {
     var x: Double
     var y: Double
@@ -19,26 +19,44 @@ struct HubBox: Equatable {
 }
 
 enum HubLayout {
-    static let collapsedWidth = 86.0
-    static let collapsedHeight = 168.0
-    static let expandedWidth = 368.0
-    static let expandedHeight = 820.0
-    static let collapsedCornerRadius = 43.0
-    static let expandedCornerRadius = 44.0
-    static let contentMargin = 14.0
+    static let collapsedWidth = 52.0
+    static let expandedWidth = 304.0
+    static let expandedHeight = 380.0
+    static let collapsedCornerRadius = 18.0
+    static let expandedCornerRadius = 26.0
+    static let contentMargin = 12.0
     static let edgeTuck = 0.0
+    static let collapsedPadV = 8.0
+    static let collapsedPadH = 4.0
+    static let batteryRow = 18.0
+    static let mediaRow = 26.0
+    static let timeRow = 14.0
+    static let rowGap = 5.0
 
     static var innerCornerRadius: Double { expandedCornerRadius - contentMargin }
+
+    static func collapsedHeight(nowPlaying: Bool, timer: Bool, stopwatch: Bool) -> Double {
+        var height = collapsedPadV * 2 + batteryRow
+        if nowPlaying { height += rowGap + mediaRow }
+        if timer { height += rowGap + timeRow }
+        if stopwatch { height += rowGap + timeRow }
+        return height
+    }
 
     static func panel(
         expanded: Bool,
         visibleMinX: Double,
         visibleMidY: Double,
-        visibleHeight: Double = 2000
+        visibleHeight: Double = 2000,
+        nowPlaying: Bool = false,
+        timer: Bool = false,
+        stopwatch: Bool = false
     ) -> HubBox {
         let width = expanded ? expandedWidth : collapsedWidth
-        let natural = expanded ? expandedHeight : collapsedHeight
-        let height = min(natural, max(collapsedHeight, visibleHeight - 24))
+        let natural = expanded
+            ? expandedHeight
+            : collapsedHeight(nowPlaying: nowPlaying, timer: timer, stopwatch: stopwatch)
+        let height = min(natural, max(36, visibleHeight - 24))
         let tuck = expanded ? 0.0 : edgeTuck
         return HubBox(
             x: visibleMinX - tuck,
@@ -49,12 +67,12 @@ enum HubLayout {
     }
 
     static func hotZone(screenMinX: Double, visibleMinX: Double, visibleMidY: Double) -> HubBox {
-        let width = max(collapsedWidth, visibleMinX - screenMinX + collapsedWidth)
+        let width = max(collapsedWidth + 12, visibleMinX - screenMinX + collapsedWidth + 12)
         return HubBox(
             x: screenMinX,
-            y: visibleMidY - 110,
+            y: visibleMidY - 70,
             width: width,
-            height: 220
+            height: 140
         )
     }
 }

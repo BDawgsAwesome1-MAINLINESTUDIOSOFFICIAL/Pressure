@@ -1,4 +1,5 @@
 import AppKit
+import Combine
 import SwiftUI
 
 @MainActor
@@ -14,11 +15,16 @@ final class HubController: ObservableObject {
     private var previewLocked = false
     private var alertHold = false
     private var alertToken = 0
+    private var showsNowPlaying = false
+    private var showsTimer = false
+    private var showsStopwatch = false
+    private var layoutKey = ""
+    private var cancellables: Set<AnyCancellable> = []
 
     init(model: PressureAppModel) {
         self.model = model
         panel = NSPanel(
-            contentRect: NSRect(x: 0, y: 0, width: HubLayout.collapsedWidth, height: HubLayout.collapsedHeight),
+            contentRect: NSRect(x: 0, y: 0, width: HubLayout.collapsedWidth, height: HubLayout.collapsedHeight(nowPlaying: false, timer: false, stopwatch: false)),
             styleMask: [.borderless, .nonactivatingPanel],
             backing: .buffered,
             defer: false
@@ -54,6 +60,7 @@ final class HubController: ObservableObject {
             place(expanded: preview == "expanded", on: screen, animated: false)
         }
         panel.orderFrontRegardless()
+        observeContent()
         guard !previewLocked else { return }
 
         let timer = Timer(timeInterval: 0.08, repeats: true) { [weak self] _ in
@@ -63,6 +70,32 @@ final class HubController: ObservableObject {
         }
         RunLoop.main.add(timer, forMode: .common)
         pollTimer = timer
+    }
+
+
+    private func observeContent() {
+        let island = model.island
+        island.$media
+            .combineLatest(island.$countdown, island.$stopwatch, island.$alertMessage)
+            .sink { [weak self] media, countdown, stopwatch, alert in
+                self?.noteContent(
+                    nowPlaying: media?.isPlaying == true,
+                    timer: countdown.phase == .running || alert != nil,
+                    stopwatch: stopwatch.phase == .running
+                )
+            }
+            .store(in: &cancellables)
+    }
+
+    private func noteContent(nowPlaying: Bool, timer: Bool, stopwatch: Bool) {
+        let key = "\(nowPlaying)-\(timer)-\(stopwatch)"
+        guard key != layoutKey else { return }
+        layoutKey = key
+        showsNowPlaying = nowPlaying
+        showsTimer = timer
+        showsStopwatch = stopwatch
+        let screen = anchoredScreen ?? NSScreen.main ?? NSScreen.screens.first
+        place(expanded: isExpanded, on: screen, animated: panel.isVisible)
     }
 
     func collapse() {
@@ -102,7 +135,10 @@ final class HubController: ObservableObject {
             expanded: isExpanded,
             visibleMinX: Double(home.visibleFrame.minX),
             visibleMidY: Double(home.visibleFrame.midY),
-            visibleHeight: Double(home.visibleFrame.height)
+            visibleHeight: Double(home.visibleFrame.height),
+            nowPlaying: showsNowPlaying,
+            timer: showsTimer,
+            stopwatch: showsStopwatch
         )
         let hot = HubLayout.hotZone(
             screenMinX: Double(screen.frame.minX),
@@ -152,7 +188,10 @@ final class HubController: ObservableObject {
             expanded: expanded,
             visibleMinX: Double(screen.visibleFrame.minX),
             visibleMidY: Double(screen.visibleFrame.midY),
-            visibleHeight: Double(screen.visibleFrame.height)
+            visibleHeight: Double(screen.visibleFrame.height),
+            nowPlaying: showsNowPlaying,
+            timer: showsTimer,
+            stopwatch: showsStopwatch
         )
         let rect = NSRect(x: box.x, y: box.y, width: box.width, height: box.height)
         isExpanded = expanded
@@ -193,14 +232,14 @@ struct HubView: View {
                 compactPill
             }
         }
-        .padding(.horizontal, hub.isExpanded ? CGFloat(HubLayout.contentMargin) : 8)
-        .padding(.vertical, hub.isExpanded ? 10 : 12)
+        .padding(.horizontal, hub.isExpanded ? CGFloat(HubLayout.contentMargin) : CGFloat(HubLayout.collapsedPadH))
+        .padding(.vertical, hub.isExpanded ? 10 : CGFloat(HubLayout.collapsedPadV))
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(Color.black)
         .clipShape(RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
         .overlay {
             RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-                .strokeBorder(accent.opacity(0.55), lineWidth: 1.5)
+                .strokeBorder(Color.white.opacity(0.16), lineWidth: 1)
         }
         .animation(.spring(response: 0.48, dampingFraction: 0.76), value: hub.isExpanded)
         .accessibilityElement(children: .contain)
@@ -213,28 +252,70 @@ struct HubView: View {
     }
 
     private var compactPill: some View {
-        VStack(spacing: 8) {
-            Image(systemName: island.compactSymbol)
-                .font(.system(size: 16, weight: .bold))
-                .foregroundStyle(accent)
-                .shadow(color: accent.opacity(0.85), radius: 8)
-            Text(island.compactText)
-                .font(.system(size: 12, weight: .bold, design: .rounded))
-                .foregroundStyle(accent)
-                .multilineTextAlignment(.center)
-                .lineLimit(3)
-                .minimumScaleFactor(0.55)
+        VStack(spacing: CGFloat(HubLayout.rowGap)) {
+            compactBattery
+            if island.media?.isPlaying == true {
+                compactNowPlaying
+            }
+            if island.countdown.phase == .running || island.alertMessage != nil {
+                Text(island.alertMessage ?? IslandTimeFormat.countdown(island.countdown.remaining))
+                    .font(.system(size: 10, weight: .bold, design: .rounded))
+                    .foregroundStyle(Color(nsColor: .systemOrange))
+                    .monospacedDigit()
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.5)
+                    .frame(height: CGFloat(HubLayout.timeRow))
+            }
+            if island.stopwatch.phase == .running {
+                Text(IslandTimeFormat.stopwatch(island.stopwatch.elapsed))
+                    .font(.system(size: 10, weight: .bold, design: .rounded))
+                    .foregroundStyle(Color(nsColor: .systemYellow))
+                    .monospacedDigit()
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.5)
+                    .frame(height: CGFloat(HubLayout.timeRow))
+            }
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
+    }
+
+    private var compactBattery: some View {
+        HStack(spacing: 2) {
+            if island.power.isCharging {
+                Image(systemName: "bolt.fill")
+                    .font(.system(size: 8, weight: .bold))
+            } else if island.power.mode == .ac {
+                Image(systemName: "powerplug.fill")
+                    .font(.system(size: 8, weight: .bold))
+            }
+            Text(island.power.mode == .ac ? "AC" : island.power.compactText)
+                .font(.system(size: 11, weight: .bold, design: .rounded))
+                .monospacedDigit()
+                .lineLimit(1)
+                .minimumScaleFactor(0.6)
+        }
+        .foregroundStyle(powerColor)
+        .frame(height: CGFloat(HubLayout.batteryRow))
+    }
+
+    private var compactNowPlaying: some View {
+        HStack(spacing: 4) {
+            coverArt(side: 22)
+            Button(action: island.playPause) {
+                Image(systemName: island.media?.isPlaying == true ? "pause.fill" : "play.fill")
+                    .font(.system(size: 8, weight: .bold))
+                    .foregroundStyle(.white)
+                    .frame(width: 16, height: 16)
+                    .background(Color.white.opacity(0.18), in: Circle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel(island.media?.isPlaying == true ? "Pause" : "Play")
+        }
+        .frame(height: CGFloat(HubLayout.mediaRow))
     }
 
     private var expandedCard: some View {
-        HStack(alignment: .center, spacing: 0) {
-            Capsule()
-                .fill(accent)
-                .frame(width: 6)
-                .padding(.vertical, 8)
-                .padding(.trailing, 12)
+        ScrollView {
             VStack(alignment: .leading, spacing: 8) {
                 header
                 nowPlayingRow
@@ -257,8 +338,10 @@ struct HubView: View {
                 }
                 .buttonStyle(.plain)
             }
-            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+            .frame(maxWidth: .infinity, alignment: .leading)
         }
+        .scrollIndicators(.hidden)
+        .scrollContentBackground(.hidden)
     }
 
     private var header: some View {
@@ -289,8 +372,7 @@ struct HubView: View {
             VStack(alignment: .leading, spacing: 8) {
                 Button(action: island.openNowPlaying) {
                     HStack(spacing: 8) {
-                        Image(systemName: "music.note")
-                            .foregroundStyle(Color(nsColor: .systemPink))
+                        coverArt(side: 32)
                         VStack(alignment: .leading, spacing: 1) {
                             Text(nowPlayingTitle)
                                 .font(.system(size: 13, weight: .semibold))
@@ -455,6 +537,36 @@ struct HubView: View {
                 .buttonStyle(.plain)
             }
         }
+    }
+
+
+    private func coverArt(side: CGFloat) -> some View {
+        Group {
+            if let image = island.artwork {
+                Image(nsImage: image)
+                    .resizable()
+                    .scaledToFill()
+            } else {
+                ZStack {
+                    Color(nsColor: .systemPink)
+                    Text(coverMark)
+                        .font(.system(size: side * 0.38, weight: .bold, design: .rounded))
+                        .foregroundStyle(.white)
+                        .minimumScaleFactor(0.5)
+                        .lineLimit(1)
+                }
+            }
+        }
+        .frame(width: side, height: side)
+        .clipShape(RoundedRectangle(cornerRadius: side * 0.22, style: .continuous))
+    }
+
+    private var coverMark: String {
+        let title = island.media?.title.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        let words = title.split(whereSeparator: { $0.isWhitespace })
+        let letters = words.prefix(2).compactMap(\.first)
+        if letters.isEmpty { return "♪" }
+        return String(letters).uppercased()
     }
 
     private func row<Content: View>(@ViewBuilder _ content: () -> Content) -> some View {

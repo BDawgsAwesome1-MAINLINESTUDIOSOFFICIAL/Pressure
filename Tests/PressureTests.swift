@@ -127,8 +127,14 @@ struct PressureTests {
         check(!hot.contains(x: 4, y: 200), "the top of the left edge does not open the hub")
         check(!hot.contains(x: 400, y: 800), "the middle of the screen does not open the hub")
         check(HubLayout.innerCornerRadius == HubLayout.expandedCornerRadius - HubLayout.contentMargin, "inner corners stay concentric with the island")
-        check(HubLayout.expandedCornerRadius == 44, "expanded island keeps a 44pt corner")
-        check(HubLayout.collapsedWidth >= 72, "compact pill fits an icon and a short label")
+        check((44...52).contains(HubLayout.collapsedWidth), "compact pill stays about 44 to 52 points wide")
+        check(HubLayout.expandedWidth >= 280 && HubLayout.expandedWidth <= 320, "expanded card stays about 280 to 320 points wide")
+        check(HubLayout.expandedHeight >= 360 && HubLayout.expandedHeight <= 400, "expanded card stays under a 400 point cap")
+        let batteryOnly = HubLayout.collapsedHeight(nowPlaying: false, timer: false, stopwatch: false)
+        let withMedia = HubLayout.collapsedHeight(nowPlaying: true, timer: true, stopwatch: true)
+        check(batteryOnly < 56, "battery-only pill is short, got \(batteryOnly)")
+        check(withMedia > batteryOnly && withMedia < 140, "live rows add height without a tall panel, got \(withMedia)")
+        check(collapsed.height == batteryOnly, "the resting pill is only as tall as the battery row")
 
         let timerFirst = IslandPriority.compact(IslandCandidates(
             timerRunning: true,
