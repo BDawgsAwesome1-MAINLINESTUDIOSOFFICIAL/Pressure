@@ -1,0 +1,312 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 56;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		BA000001 /* PressureApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA000001; };
+		BA000002 /* AppConfig.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA000002; };
+		BA000003 /* AppPriority.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA000003; };
+		BA000004 /* MemorySnapshot.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA000004; };
+		BA000005 /* MemoryMonitor.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA000005; };
+		BA000006 /* AppCloser.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA000006; };
+		BA000007 /* PressureEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA000007; };
+		BA000008 /* StatusItemView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA000008; };
+		BA000009 /* SettingsWindow.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA000009; };
+		BA00000B /* HubLayout.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA00000E; };
+		BA00000C /* HubWindow.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA00000F; };
+		BA00000A /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = FA00000B; };
+/* End PBXBuildFile section */
+
+/* Begin PBXFileReference section */
+		FA000001 /* PressureApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PressureApp.swift; sourceTree = "<group>"; };
+		FA000002 /* AppConfig.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppConfig.swift; sourceTree = "<group>"; };
+		FA000003 /* AppPriority.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppPriority.swift; sourceTree = "<group>"; };
+		FA000004 /* MemorySnapshot.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MemorySnapshot.swift; sourceTree = "<group>"; };
+		FA000005 /* MemoryMonitor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MemoryMonitor.swift; sourceTree = "<group>"; };
+		FA000006 /* AppCloser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppCloser.swift; sourceTree = "<group>"; };
+		FA000007 /* PressureEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PressureEngine.swift; sourceTree = "<group>"; };
+		FA000008 /* StatusItemView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StatusItemView.swift; sourceTree = "<group>"; };
+		FA000009 /* SettingsWindow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsWindow.swift; sourceTree = "<group>"; };
+		FA00000E /* HubLayout.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HubLayout.swift; sourceTree = "<group>"; };
+		FA00000F /* HubWindow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HubWindow.swift; sourceTree = "<group>"; };
+		FA00000A /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		FA00000B /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		FA00000C /* Pressure.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Pressure.entitlements; sourceTree = "<group>"; };
+		FA00000D /* Pressure.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Pressure.app; sourceTree = BUILT_PRODUCTS_DIR; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		PS000003 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		GR000001 = {
+			isa = PBXGroup;
+			children = (
+				GR000002 /* Pressure */,
+				GR000007 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		GR000002 /* Pressure */ = {
+			isa = PBXGroup;
+			children = (
+				FA000001 /* PressureApp.swift */,
+				GR000003 /* MenuBar */,
+				GR000004 /* Core */,
+				GR000005 /* Config */,
+				GR000006 /* Resources */,
+				FA00000A /* Info.plist */,
+				FA00000C /* Pressure.entitlements */,
+			);
+			path = Pressure;
+			sourceTree = "<group>";
+		};
+		GR000003 /* MenuBar */ = {
+			isa = PBXGroup;
+			children = (
+				FA000008 /* StatusItemView.swift */,
+				FA000009 /* SettingsWindow.swift */,
+				FA00000E /* HubLayout.swift */,
+				FA00000F /* HubWindow.swift */,
+			);
+			path = MenuBar;
+			sourceTree = "<group>";
+		};
+		GR000004 /* Core */ = {
+			isa = PBXGroup;
+			children = (
+				FA000004 /* MemorySnapshot.swift */,
+				FA000005 /* MemoryMonitor.swift */,
+				FA000007 /* PressureEngine.swift */,
+				FA000006 /* AppCloser.swift */,
+			);
+			path = Core;
+			sourceTree = "<group>";
+		};
+		GR000005 /* Config */ = {
+			isa = PBXGroup;
+			children = (
+				FA000002 /* AppConfig.swift */,
+				FA000003 /* AppPriority.swift */,
+			);
+			path = Config;
+			sourceTree = "<group>";
+		};
+		GR000006 /* Resources */ = {
+			isa = PBXGroup;
+			children = (
+				FA00000B /* Assets.xcassets */,
+			);
+			path = Resources;
+			sourceTree = "<group>";
+		};
+		GR000007 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				FA00000D /* Pressure.app */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		TA000001 /* Pressure */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = CL000002 /* Build configuration list for PBXNativeTarget "Pressure" */;
+			buildPhases = (
+				PS000001 /* Sources */,
+				PS000003 /* Frameworks */,
+				PS000002 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = Pressure;
+			productName = Pressure;
+			productReference = FA00000D /* Pressure.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		PR000001 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = 1;
+				LastUpgradeCheck = 1600;
+				TargetAttributes = {
+					TA000001 = {
+						CreatedOnToolsVersion = 16.0;
+					};
+				};
+			};
+			buildConfigurationList = CL000001 /* Build configuration list for PBXProject "Pressure" */;
+			compatibilityVersion = "Xcode 14.0";
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+				Base,
+			);
+			mainGroup = GR000001;
+			productRefGroup = GR000007 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				TA000001 /* Pressure */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		PS000002 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				BA00000A /* Assets.xcassets in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		PS000001 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				BA000001 /* PressureApp.swift in Sources */,
+				BA000002 /* AppConfig.swift in Sources */,
+				BA000003 /* AppPriority.swift in Sources */,
+				BA000004 /* MemorySnapshot.swift in Sources */,
+				BA000005 /* MemoryMonitor.swift in Sources */,
+				BA000006 /* AppCloser.swift in Sources */,
+				BA000007 /* PressureEngine.swift in Sources */,
+				BA000008 /* StatusItemView.swift in Sources */,
+				BA000009 /* SettingsWindow.swift in Sources */,
+				BA00000B /* HubLayout.swift in Sources */,
+				BA00000C /* HubWindow.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin XCBuildConfiguration section */
+		CF000001 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ENABLE_MODULES = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				MACOSX_DEPLOYMENT_TARGET = 13.0;
+				ONLY_ACTIVE_ARCH = YES;
+				SDKROOT = macosx;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+			};
+			name = Debug;
+		};
+		CF000002 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ENABLE_MODULES = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				MACOSX_DEPLOYMENT_TARGET = 13.0;
+				SDKROOT = macosx;
+				SWIFT_COMPILATION_MODE = wholemodule;
+			};
+			name = Release;
+		};
+		CF000003 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = Pressure/Pressure.entitlements;
+				CODE_SIGN_IDENTITY = "-";
+				CODE_SIGN_STYLE = Manual;
+				COMBINE_HIDPI_IMAGES = YES;
+				CURRENT_PROJECT_VERSION = 1;
+				ENABLE_APP_SANDBOX = NO;
+				ENABLE_HARDENED_RUNTIME = YES;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = Pressure/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				MARKETING_VERSION = 1.0.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.mainlinestudios.Pressure;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+			};
+			name = Debug;
+		};
+		CF000004 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = Pressure/Pressure.entitlements;
+				CODE_SIGN_IDENTITY = "-";
+				CODE_SIGN_STYLE = Manual;
+				COMBINE_HIDPI_IMAGES = YES;
+				CURRENT_PROJECT_VERSION = 1;
+				ENABLE_APP_SANDBOX = NO;
+				ENABLE_HARDENED_RUNTIME = YES;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = Pressure/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				MARKETING_VERSION = 1.0.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.mainlinestudios.Pressure;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		CL000001 /* Build configuration list for PBXProject "Pressure" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				CF000001 /* Debug */,
+				CF000002 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		CL000002 /* Build configuration list for PBXNativeTarget "Pressure" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				CF000003 /* Debug */,
+				CF000004 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = PR000001 /* Project object */;
+}

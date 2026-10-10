@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Pressure — macOS memory guardian</title>
+  <meta name="description" content="Pressure watches your Mac's memory and quietly closes the apps you don't need before macOS force-quits them.">
+  <style>
+    :root {
+      color-scheme: dark;
+      --green: #30d158;
+      --ink: #f5f5f7;
+      --muted: rgba(245, 245, 247, 0.62);
+      --line: rgba(255, 255, 255, 0.1);
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", sans-serif;
+      background: #000;
+      color: var(--ink);
+      display: grid;
+      place-items: center;
+      padding: 32px 20px;
+    }
+    main {
+      width: min(560px, 100%);
+      background: #0c0c0e;
+      border: 1px solid var(--line);
+      border-radius: 36px;
+      padding: 36px 32px 28px;
+    }
+    .mark {
+      width: 10px;
+      height: 72px;
+      border-radius: 999px;
+      background: var(--green);
+      box-shadow: 0 0 18px rgba(48, 209, 88, 0.7);
+    }
+    .top {
+      display: flex;
+      gap: 18px;
+      align-items: center;
+    }
+    h1 {
+      margin: 0;
+      font-size: 15px;
+      font-weight: 600;
+      letter-spacing: 0.01em;
+      color: var(--muted);
+    }
+    .score {
+      margin: 2px 0 0;
+      font-size: 42px;
+      font-weight: 700;
+      letter-spacing: -0.04em;
+      color: var(--green);
+    }
+    p { color: var(--muted); line-height: 1.45; }
+    .lead { color: var(--ink); font-size: 22px; font-weight: 600; letter-spacing: -0.03em; margin: 22px 0 8px; }
+    a.download {
+      display: block;
+      margin-top: 22px;
+      text-align: center;
+      text-decoration: none;
+      color: #000;
+      background: var(--green);
+      font-weight: 650;
+      border-radius: 999px;
+      padding: 14px 18px;
+    }
+    a.download:hover { filter: brightness(1.08); }
+    ol { margin: 8px 0 0; padding-left: 18px; color: var(--muted); }
+    li { margin: 6px 0; }
+    .note { font-size: 13px; }
+    footer { margin-top: 22px; font-size: 13px; color: var(--muted); }
+    footer a { color: var(--ink); }
+  </style>
+</head>
+<body>
+  <main>
+    <div class="top">
+      <div class="mark" aria-hidden="true"></div>
+      <div>
+        <h1>macOS memory guardian</h1>
+        <p class="score">Pressure</p>
+      </div>
+    </div>
+    <p class="lead">Watches your Mac’s memory and closes the background apps you don’t need before macOS force-quits them.</p>
+    <p>A black pill sits on the left edge of the screen. Move the pointer there and it opens into controls for auto-close, warnings, and launch at login.</p>
+    <a class="download" href="Pressure.dmg">Download Pressure.dmg</a>
+    <ol>
+      <li>Open the disk image and drag Pressure into Applications.</li>
+      <li>Open Pressure from Applications. If macOS says the developer can’t be verified, right-click the app and choose Open.</li>
+      <li>Move the pointer to the middle of the left edge. The Hub opens there.</li>
+    </ol>
+    <p class="note">Requires macOS 13 or later. This build is ad-hoc signed and not notarized, so the first open needs the right-click step above.</p>
+    <footer>MIT License · <a href="https://github.com/BDawgsAwesome1-MAINLINESTUDIOSOFFICIAL/Pressure">Source</a></footer>
+  </main>
+</body>
+</html>
