@@ -117,7 +117,7 @@ final class StatusItemController: NSObject, NSMenuDelegate {
         let settings = NSMenuItem(title: "Settings…", action: #selector(openSettings(_:)), keyEquivalent: ",")
         settings.target = self
         menu.addItem(settings)
-        let quit = NSMenuItem(title: "Quit Pressure", action: #selector(quit(_:)), keyEquivalent: "q")
+        let quit = NSMenuItem(title: "Quit Pressure", action: #selector(quit(_:)), keyEquivalent: "")
         quit.target = self
         menu.addItem(quit)
     }
@@ -168,7 +168,7 @@ final class StatusItemController: NSObject, NSMenuDelegate {
     }
 
     @objc private func quit(_ sender: NSMenuItem) {
-        NSApp.terminate(nil)
+        model.quitCompletely()
     }
 
     private func activate() {

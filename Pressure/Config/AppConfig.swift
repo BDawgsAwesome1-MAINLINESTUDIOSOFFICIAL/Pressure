@@ -9,6 +9,8 @@ struct AppConfig: Codable, Equatable {
     var notifyOnWarning: Bool = true
     var notifyBeforeAutoClose: Bool = true
     var launchAtLogin: Bool = false
+    /// The Dock icon stays on. Clicking it opens Settings. The side island runs in the same process.
+    var showInDock: Bool = true
     var priority: [AppPriorityEntry] = []
     var protectedBundleIDs: [String] = []
 
@@ -26,6 +28,7 @@ struct AppConfig: Codable, Equatable {
         case notifyOnWarning
         case notifyBeforeAutoClose
         case launchAtLogin
+        case showInDock
         case priority
         case protectedBundleIDs
     }
@@ -41,6 +44,8 @@ struct AppConfig: Codable, Equatable {
         notifyOnWarning = try container.decodeIfPresent(Bool.self, forKey: .notifyOnWarning) ?? true
         notifyBeforeAutoClose = try container.decodeIfPresent(Bool.self, forKey: .notifyBeforeAutoClose) ?? true
         launchAtLogin = try container.decodeIfPresent(Bool.self, forKey: .launchAtLogin) ?? false
+        _ = try container.decodeIfPresent(Bool.self, forKey: .showInDock)
+        showInDock = true
         priority = try container.decodeIfPresent([AppPriorityEntry].self, forKey: .priority) ?? []
         protectedBundleIDs = try container.decodeIfPresent([String].self, forKey: .protectedBundleIDs) ?? []
         normalizeThresholds()

@@ -10,6 +10,7 @@ final class PressureAppModel {
     let island: IslandModel
     private(set) var loginItemStatus = ""
     private var settings: SettingsWindowController?
+    private var fullQuit = false
 
     init() {
         engine = PressureEngine(monitor: monitor, configStore: configStore, log: log)
@@ -27,10 +28,52 @@ final class PressureAppModel {
     }
 
     func showSettings() {
+        applyDockVisibility()
         if settings == nil {
             settings = SettingsWindowController(model: self)
         }
         settings?.show()
+    }
+
+    /// Dock Quit and Command-Q close the Dock app only. The island keeps running.
+    func dismissDockApp() {
+        settings?.close()
+        NSApp.setActivationPolicy(.accessory)
+    }
+
+    /// Menu-bar Quit stops the island as well.
+    func quitCompletely() {
+        fullQuit = true
+        NSApp.terminate(nil)
+    }
+
+    /// Starts Pressure again so a new Full Disk Access grant is picked up.
+    func resetPressure() {
+        let url = Bundle.main.bundleURL
+        let configuration = NSWorkspace.OpenConfiguration()
+        configuration.createsNewApplicationInstance = true
+        configuration.activates = true
+        let current = ProcessInfo.processInfo.processIdentifier
+        NSWorkspace.shared.openApplication(at: url, configuration: configuration) { app, error in
+            let launched = app?.processIdentifier
+            DispatchQueue.main.async {
+                guard error == nil, let launched, launched != current else { return }
+                self.fullQuit = true
+                NSApp.terminate(nil)
+            }
+        }
+    }
+
+    func consumeFullQuit() -> Bool {
+        let quitting = fullQuit
+        fullQuit = false
+        return quitting
+    }
+
+    /// The Dock icon stays while the Dock app is open.
+    func applyDockVisibility() {
+        configStore.update { $0.showInDock = true }
+        NSApp.setActivationPolicy(.regular)
     }
 
     func setLaunchAtLogin(_ enabled: Bool) {
@@ -78,7 +121,6 @@ final class PressureAppDelegate: NSObject, NSApplicationDelegate {
     static func main() {
         let app = NSApplication.shared
         let delegate = PressureAppDelegate()
-        app.setActivationPolicy(.accessory)
         app.delegate = delegate
         app.run()
     }
@@ -89,8 +131,33 @@ final class PressureAppDelegate: NSObject, NSApplicationDelegate {
         statusItem = StatusItemController(model: model)
         let hub = HubController(model: model)
         self.hub = hub
+        model.applyDockVisibility()
         model.start()
         hub.start()
+        NSApp.deactivate()
+    }
+
+    func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
+        model?.showSettings()
+        hub?.keepVisible()
+        return true
+    }
+
+    func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {
+        false
+    }
+
+    func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
+        guard let model else { return .terminateNow }
+        if model.consumeFullQuit() {
+            return .terminateNow
+        }
+        model.dismissDockApp()
+        hub?.keepVisible()
+        DispatchQueue.main.async { [weak hub] in
+            hub?.keepVisible()
+        }
+        return .terminateCancel
     }
 
     func applicationSupportsSecureRestorableState(_ app: NSApplication) -> Bool {

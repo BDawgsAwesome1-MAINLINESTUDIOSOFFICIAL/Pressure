@@ -39,6 +39,10 @@ final class IslandModel: ObservableObject {
     @Published private(set) var stopwatch = StopwatchState()
     @Published private(set) var alertMessage: String?
     @Published private(set) var playbackNote: String?
+    @Published private(set) var cursor = CursorSnapshot()
+    @Published private(set) var messages = MessageSnapshot()
+    @Published private(set) var actions = ActionSnapshot()
+    @Published var messageDraft = ""
 
     var onAlert: (() -> Void)?
     var onPlaybackNote: ((String) -> Void)?
@@ -47,6 +51,12 @@ final class IslandModel: ObservableObject {
     private var clock: Timer?
     private var mediaTimer: Timer?
     private var powerTimer: Timer?
+    private var cursorTimer: Timer?
+    private var messageTimer: Timer?
+    private var actionTimer: Timer?
+    private var actionMemory = ActionMemory()
+    private var latestRuns: [ActionRun] = []
+    private var messageSentAt: Date?
     private var countdownEndsAt: Date?
     private var stopwatchStartedAt: Date?
     private var accumulatedStopwatch: TimeInterval = 0
@@ -72,6 +82,10 @@ final class IslandModel: ObservableObject {
     func start() {
         agenda.start()
         refreshPower()
+        CursorBridge.install()
+        refreshCursor()
+        refreshMessages()
+        refreshActions()
         Task { @MainActor in
             self.pollMedia()
         }
@@ -91,12 +105,33 @@ final class IslandModel: ObservableObject {
                 self?.refreshPower()
             }
         }
+        let cursorTimer = Timer(timeInterval: 0.5, repeats: true) { [weak self] _ in
+            MainActor.assumeIsolated {
+                self?.refreshCursor()
+            }
+        }
+        let messageTimer = Timer(timeInterval: 4, repeats: true) { [weak self] _ in
+            MainActor.assumeIsolated {
+                self?.refreshMessages()
+            }
+        }
+        let actionTimer = Timer(timeInterval: 15, repeats: true) { [weak self] _ in
+            MainActor.assumeIsolated {
+                self?.refreshActions()
+            }
+        }
         RunLoop.main.add(clock, forMode: .common)
         RunLoop.main.add(mediaTimer, forMode: .common)
         RunLoop.main.add(powerTimer, forMode: .common)
+        RunLoop.main.add(cursorTimer, forMode: .common)
+        RunLoop.main.add(messageTimer, forMode: .common)
+        RunLoop.main.add(actionTimer, forMode: .common)
         self.clock = clock
         self.mediaTimer = mediaTimer
         self.powerTimer = powerTimer
+        self.cursorTimer = cursorTimer
+        self.messageTimer = messageTimer
+        self.actionTimer = actionTimer
     }
 
     var candidates: IslandCandidates {
@@ -376,6 +411,60 @@ final class IslandModel: ObservableObject {
         Task { @MainActor in
             try? await Task.sleep(for: .milliseconds(350))
             self.pollMedia()
+        }
+    }
+
+    func sendMessageReply() {
+        guard let message = messages.latest else { return }
+        let text = messageDraft.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !text.isEmpty else { return }
+        if let error = MessageInbox.send(text, chatID: message.chatID) {
+            messages.note = error
+            return
+        }
+        messageDraft = ""
+        MessageInbox.acknowledge(message.appleDate)
+        messageSentAt = Date()
+        refreshMessages()
+    }
+
+    func markMessagesSeen() {
+        guard let newest = messages.unseen.map(\.appleDate).max() else { return }
+        MessageInbox.acknowledge(newest)
+        messageSentAt = nil
+        refreshMessages()
+    }
+
+    private func refreshMessages() {
+        let next = MessageInbox.poll(sentAt: messageSentAt)
+        if next != messages {
+            messages = next
+        }
+    }
+
+    private func refreshActions() {
+        let result = GitHubActions.poll(memory: actionMemory)
+        actionMemory = result.0
+        latestRuns = result.1.running
+        if result.1 != actions {
+            actions = result.1
+        }
+    }
+
+    private func refreshCursor() {
+        let next = CursorActivityReader.load()
+        if next != cursor {
+            cursor = next
+        }
+        if messages.showSentCheck {
+            refreshMessages()
+        }
+        if actions.showCheck || actions.showFailure {
+            let result = ActionBoard.reduce(previous: actionMemory, runs: latestRuns, now: Date())
+            actionMemory = result.0
+            if result.1 != actions {
+                actions = result.1
+            }
         }
     }
 

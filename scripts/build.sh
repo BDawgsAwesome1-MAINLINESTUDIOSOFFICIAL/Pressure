@@ -32,6 +32,10 @@ swiftc "${SWIFT_FLAGS[@]}" -o "$BUILD/PressureTests" \
   "$ROOT/Pressure/MenuBar/HubLayout.swift" \
   "$ROOT/Pressure/Island/IslandPriority.swift" \
   "$ROOT/Pressure/Island/PowerReader.swift" \
+  "$ROOT/Pressure/Island/CursorActivity.swift" \
+  "$ROOT/Pressure/Island/MessageInbox.swift" \
+  "$ROOT/Pressure/Island/GitHubActions.swift" \
+  "$ROOT/Pressure/Island/NowPlaying.swift" \
   "$ROOT/Tests/PressureTests.swift"
 "$BUILD/PressureTests"
 
@@ -52,13 +56,16 @@ swiftc "${SWIFT_FLAGS[@]}" -O -o "$APP/Contents/MacOS/Pressure" \
   "$ROOT/Pressure/Island/PowerReader.swift" \
   "$ROOT/Pressure/Island/NowPlaying.swift" \
   "$ROOT/Pressure/Island/CalendarAgenda.swift" \
-  "$ROOT/Pressure/Island/IslandModel.swift"
+  "$ROOT/Pressure/Island/IslandModel.swift" \
+  "$ROOT/Pressure/Island/CursorActivity.swift" \
+  "$ROOT/Pressure/Island/MessageInbox.swift" \
+  "$ROOT/Pressure/Island/GitHubActions.swift"
 
 cp "$ROOT/Pressure/Info.plist" "$APP/Contents/Info.plist"
 cp "$ROOT/Pressure/Resources/Pressure.icns" "$APP/Contents/Resources/Pressure.icns"
-xattr -cr "$APP"
-xattr -dr com.apple.provenance "$APP" 2>/dev/null || true
+cp "$ROOT/Pressure/Resources/cursor-hook.py" "$APP/Contents/Resources/cursor-hook.py"
+xattr -cr "$APP" 2>/dev/null || true
 xattr -d com.apple.FinderInfo "$APP" 2>/dev/null || true
-xattr -d 'com.apple.fileprovider.fpfs#P' "$APP" 2>/dev/null || true
+xattr -d com.apple.fileprovider.fpfs#P "$APP" 2>/dev/null || true
 codesign --force --sign - --entitlements "$ROOT/Pressure/Pressure.entitlements" "$APP"
 echo "Built $APP"

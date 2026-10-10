@@ -31,12 +31,23 @@ enum HubLayout {
     static let batteryRow = 18.0
     static let mediaRow = 26.0
     static let timeRow = 14.0
+    static let cursorRow = 16.0
     static let rowGap = 5.0
 
     static var innerCornerRadius: Double { expandedCornerRadius - contentMargin }
 
-    static func collapsedHeight(nowPlaying: Bool, timer: Bool, stopwatch: Bool) -> Double {
+    static func collapsedHeight(
+        nowPlaying: Bool,
+        timer: Bool,
+        stopwatch: Bool,
+        cursor: Bool = false,
+        messages: Bool = false,
+        actions: Bool = false
+    ) -> Double {
         var height = collapsedPadV * 2 + batteryRow
+        if messages { height += rowGap + cursorRow }
+        if actions { height += rowGap + cursorRow }
+        if cursor { height += rowGap + cursorRow }
         if nowPlaying { height += rowGap + mediaRow }
         if timer { height += rowGap + timeRow }
         if stopwatch { height += rowGap + timeRow }
@@ -50,12 +61,22 @@ enum HubLayout {
         visibleHeight: Double = 2000,
         nowPlaying: Bool = false,
         timer: Bool = false,
-        stopwatch: Bool = false
+        stopwatch: Bool = false,
+        cursor: Bool = false,
+        messages: Bool = false,
+        actions: Bool = false
     ) -> HubBox {
         let width = expanded ? expandedWidth : collapsedWidth
         let natural = expanded
             ? expandedHeight
-            : collapsedHeight(nowPlaying: nowPlaying, timer: timer, stopwatch: stopwatch)
+            : collapsedHeight(
+                nowPlaying: nowPlaying,
+                timer: timer,
+                stopwatch: stopwatch,
+                cursor: cursor,
+                messages: messages,
+                actions: actions
+            )
         let height = min(natural, max(36, visibleHeight - 24))
         let tuck = expanded ? 0.0 : edgeTuck
         return HubBox(

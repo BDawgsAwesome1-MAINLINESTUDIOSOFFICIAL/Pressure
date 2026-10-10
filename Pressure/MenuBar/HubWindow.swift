@@ -18,13 +18,16 @@ final class HubController: ObservableObject {
     private var showsNowPlaying = false
     private var showsTimer = false
     private var showsStopwatch = false
+    private var showsCursor = false
+    private var showsMessages = false
+    private var showsActions = false
     private var layoutKey = ""
     private var cancellables: Set<AnyCancellable> = []
 
     init(model: PressureAppModel) {
         self.model = model
         panel = NSPanel(
-            contentRect: NSRect(x: 0, y: 0, width: HubLayout.collapsedWidth, height: HubLayout.collapsedHeight(nowPlaying: false, timer: false, stopwatch: false)),
+            contentRect: NSRect(x: 0, y: 0, width: HubLayout.collapsedWidth, height: HubLayout.collapsedHeight(nowPlaying: false, timer: false, stopwatch: false, cursor: false)),
             styleMask: [.borderless, .nonactivatingPanel],
             backing: .buffered,
             defer: false
@@ -49,6 +52,11 @@ final class HubController: ObservableObject {
         model.island.onAlert = { [weak self] in
             self?.presentAlert()
         }
+    }
+
+    /// Puts the side island back in front after the Dock app is closed.
+    func keepVisible() {
+        panel.orderFrontRegardless()
     }
 
     func start() {
@@ -81,19 +89,71 @@ final class HubController: ObservableObject {
                 self?.noteContent(
                     nowPlaying: media?.isPlaying == true,
                     timer: countdown.phase == .running || alert != nil,
-                    stopwatch: stopwatch.phase == .running
+                    stopwatch: stopwatch.phase == .running,
+                    cursor: self?.showsCursor ?? false,
+                    messages: self?.showsMessages ?? false,
+                    actions: self?.showsActions ?? false
+                )
+            }
+            .store(in: &cancellables)
+        island.$cursor
+            .sink { [weak self] cursor in
+                guard let self else { return }
+                self.noteContent(
+                    nowPlaying: self.showsNowPlaying,
+                    timer: self.showsTimer,
+                    stopwatch: self.showsStopwatch,
+                    cursor: cursor.showsOnPill,
+                    messages: self.showsMessages,
+                    actions: self.showsActions
+                )
+            }
+            .store(in: &cancellables)
+        island.$messages
+            .sink { [weak self] messages in
+                guard let self else { return }
+                self.noteContent(
+                    nowPlaying: self.showsNowPlaying,
+                    timer: self.showsTimer,
+                    stopwatch: self.showsStopwatch,
+                    cursor: self.showsCursor,
+                    messages: messages.showsOnPill,
+                    actions: self.showsActions
+                )
+            }
+            .store(in: &cancellables)
+        island.$actions
+            .sink { [weak self] actions in
+                guard let self else { return }
+                self.noteContent(
+                    nowPlaying: self.showsNowPlaying,
+                    timer: self.showsTimer,
+                    stopwatch: self.showsStopwatch,
+                    cursor: self.showsCursor,
+                    messages: self.showsMessages,
+                    actions: actions.showsOnPill
                 )
             }
             .store(in: &cancellables)
     }
 
-    private func noteContent(nowPlaying: Bool, timer: Bool, stopwatch: Bool) {
-        let key = "\(nowPlaying)-\(timer)-\(stopwatch)"
+    private func noteContent(
+        nowPlaying: Bool,
+        timer: Bool,
+        stopwatch: Bool,
+        cursor: Bool,
+        messages: Bool,
+        actions: Bool
+    ) {
+        let key = "\(nowPlaying)-\(timer)-\(stopwatch)-\(cursor)-\(messages)-\(actions)"
         guard key != layoutKey else { return }
         layoutKey = key
         showsNowPlaying = nowPlaying
         showsTimer = timer
         showsStopwatch = stopwatch
+        showsCursor = cursor
+        showsMessages = messages
+        showsActions = actions
         let screen = anchoredScreen ?? NSScreen.main ?? NSScreen.screens.first
         place(expanded: isExpanded, on: screen, animated: panel.isVisible)
     }
@@ -138,7 +198,10 @@ final class HubController: ObservableObject {
             visibleHeight: Double(home.visibleFrame.height),
             nowPlaying: showsNowPlaying,
             timer: showsTimer,
-            stopwatch: showsStopwatch
+            stopwatch: showsStopwatch,
+            cursor: showsCursor,
+            messages: showsMessages,
+            actions: showsActions
         )
         let hot = HubLayout.hotZone(
             screenMinX: Double(screen.frame.minX),
@@ -191,7 +254,10 @@ final class HubController: ObservableObject {
             visibleHeight: Double(screen.visibleFrame.height),
             nowPlaying: showsNowPlaying,
             timer: showsTimer,
-            stopwatch: showsStopwatch
+            stopwatch: showsStopwatch,
+            cursor: showsCursor,
+            messages: showsMessages,
+            actions: showsActions
         )
         let rect = NSRect(x: box.x, y: box.y, width: box.width, height: box.height)
         isExpanded = expanded
@@ -209,12 +275,72 @@ final class HubController: ObservableObject {
     }
 }
 
+private struct CheckStroke: Shape {
+    func path(in rect: CGRect) -> Path {
+        var path = Path()
+        path.move(to: CGPoint(x: rect.minX + rect.width * 0.26, y: rect.minY + rect.height * 0.52))
+        path.addLine(to: CGPoint(x: rect.minX + rect.width * 0.44, y: rect.minY + rect.height * 0.70))
+        path.addLine(to: CGPoint(x: rect.minX + rect.width * 0.76, y: rect.minY + rect.height * 0.34))
+        return path
+    }
+}
+
+/// Circle, then check, each drawn with a stroke trim the way Apple Pay finishes a payment.
+private struct DrawnCheck: View {
+    var startedAt: Date
+    var side: CGFloat
+
+    var body: some View {
+        TimelineView(.animation(minimumInterval: 1.0 / 60.0)) { context in
+            let elapsed = context.date.timeIntervalSince(startedAt)
+            let circle = min(1, max(0, elapsed / 0.42))
+            let check = min(1, max(0, (elapsed - 0.28) / 0.36))
+            let width = max(1.6, side * 0.12)
+            ZStack {
+                Circle()
+                    .trim(from: 0, to: circle)
+                    .stroke(
+                        Color(nsColor: .systemGreen),
+                        style: StrokeStyle(lineWidth: width, lineCap: .round)
+                    )
+                    .rotationEffect(.degrees(-90))
+                CheckStroke()
+                    .trim(from: 0, to: check)
+                    .stroke(
+                        Color(nsColor: .systemGreen),
+                        style: StrokeStyle(lineWidth: width, lineCap: .round, lineJoin: .round)
+                    )
+            }
+        }
+        .frame(width: side, height: side)
+        .accessibilityLabel("Finished")
+    }
+}
+
+private struct SpinningStar: View {
+    var spinning: Bool
+    var size: CGFloat
+
+    var body: some View {
+        let symbol = Image(systemName: "sparkle")
+            .font(.system(size: size, weight: .bold))
+        if spinning, !NSWorkspace.shared.accessibilityDisplayShouldReduceMotion {
+            TimelineView(.animation(minimumInterval: 1.0 / 30.0)) { context in
+                symbol.rotationEffect(.degrees(context.date.timeIntervalSinceReferenceDate * 240))
+            }
+        } else {
+            symbol
+        }
+    }
+}
+
 struct HubView: View {
     @ObservedObject var island: IslandModel
     @ObservedObject var monitor: MemoryMonitor
     @ObservedObject var configStore: ConfigStore
     @ObservedObject var hub: HubController
     var showSettings: () -> Void
+    var resetPressure: () -> Void
 
     init(model: PressureAppModel, hub: HubController) {
         island = model.island
@@ -222,6 +348,7 @@ struct HubView: View {
         configStore = model.configStore
         self.hub = hub
         showSettings = { model.showSettings() }
+        resetPressure = { model.resetPressure() }
     }
 
     var body: some View {
@@ -254,6 +381,15 @@ struct HubView: View {
     private var compactPill: some View {
         VStack(spacing: CGFloat(HubLayout.rowGap)) {
             compactBattery
+            if island.messages.showsOnPill {
+                compactMessages
+            }
+            if island.actions.showsOnPill {
+                compactActions
+            }
+            if island.cursor.showsOnPill {
+                compactCursor
+            }
             if island.media?.isPlaying == true {
                 compactNowPlaying
             }
@@ -298,6 +434,70 @@ struct HubView: View {
         .frame(height: CGFloat(HubLayout.batteryRow))
     }
 
+    private var compactMessages: some View {
+        HStack(spacing: 2) {
+            if island.messages.showSentCheck, let started = island.messages.sentAt {
+                DrawnCheck(startedAt: started, side: 14)
+            } else {
+                Image(systemName: "message.fill")
+                    .font(.system(size: 9, weight: .bold))
+                if !island.messages.pillText.isEmpty {
+                    Text(island.messages.pillText)
+                        .font(.system(size: 11, weight: .bold, design: .rounded))
+                        .monospacedDigit()
+                }
+            }
+        }
+        .foregroundStyle(Color(nsColor: .systemGreen))
+        .frame(height: CGFloat(HubLayout.cursorRow))
+        .accessibilityLabel("New iMessage")
+    }
+
+    private var compactActions: some View {
+        HStack(spacing: 2) {
+            if island.actions.showCheck, let started = island.actions.finishedAt {
+                DrawnCheck(startedAt: started, side: 14)
+            } else if island.actions.showFailure {
+                Image(systemName: "xmark")
+                    .font(.system(size: 9, weight: .bold))
+                    .foregroundStyle(Color(nsColor: .systemRed))
+            } else {
+                TimelineView(.animation(minimumInterval: 1.0 / 30.0)) { context in
+                    Image(systemName: "arrow.triangle.2.circlepath")
+                        .font(.system(size: 9, weight: .bold))
+                        .rotationEffect(.degrees(context.date.timeIntervalSinceReferenceDate * 240))
+                }
+                if !island.actions.pillText.isEmpty {
+                    Text(island.actions.pillText)
+                        .font(.system(size: 11, weight: .bold, design: .rounded))
+                }
+            }
+        }
+        .foregroundStyle(Color(nsColor: .systemPurple))
+        .frame(height: CGFloat(HubLayout.cursorRow))
+        .accessibilityLabel(island.actions.headline.isEmpty ? "GitHub Actions" : island.actions.headline)
+    }
+
+    private var compactCursor: some View {
+        Group {
+            if island.cursor.isWorking {
+                HStack(spacing: 2) {
+                    SpinningStar(spinning: true, size: 8)
+                    Text(island.cursor.pillText)
+                        .font(.system(size: 11, weight: .bold, design: .rounded))
+                        .monospacedDigit()
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.5)
+                }
+                .foregroundStyle(Color(nsColor: .systemTeal))
+            } else if let started = island.cursor.finishedAt {
+                DrawnCheck(startedAt: started, side: 14)
+            }
+        }
+        .frame(height: CGFloat(HubLayout.cursorRow))
+        .accessibilityLabel(island.cursor.isWorking ? (island.cursor.headline.isEmpty ? "Cursor" : island.cursor.headline) : "Finished")
+    }
+
     private var compactNowPlaying: some View {
         HStack(spacing: 4) {
             coverArt(side: 22)
@@ -318,6 +518,15 @@ struct HubView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 8) {
                 header
+                if island.messages.showsOnPill || island.messages.note != nil {
+                    messagesSection
+                }
+                if island.actions.showsOnPill || island.actions.note != nil {
+                    actionsSection
+                }
+                if island.cursor.isActive {
+                    cursorSection
+                }
                 nowPlayingRow
                 timerRow
                 stopwatchRow
@@ -342,6 +551,161 @@ struct HubView: View {
         }
         .scrollIndicators(.hidden)
         .scrollContentBackground(.hidden)
+    }
+
+    private var messagesSection: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack {
+                Text("iMessage")
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundStyle(Color(nsColor: .systemGreen))
+                Spacer()
+                if !island.messages.unseen.isEmpty {
+                    Button("Seen") { island.markMessagesSeen() }
+                        .buttonStyle(.plain)
+                        .font(.system(size: 11, weight: .semibold))
+                        .foregroundStyle(.white.opacity(0.55))
+                }
+            }
+            if let note = island.messages.note {
+                Text(note)
+                    .font(.system(size: 11, weight: .medium))
+                    .foregroundStyle(.white.opacity(0.7))
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            if island.messages.needsAccess {
+                Button("Reset Pressure", action: resetPressure)
+                    .buttonStyle(.plain)
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundStyle(.white)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 6)
+                    .background(Color.white.opacity(0.14), in: Capsule())
+            }
+            ForEach(island.messages.unseen.prefix(3)) { message in
+                VStack(alignment: .leading, spacing: 1) {
+                    Text(message.sender)
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundStyle(.white)
+                        .lineLimit(1)
+                    Text(message.body)
+                        .font(.system(size: 11, weight: .medium))
+                        .foregroundStyle(.white.opacity(0.7))
+                        .lineLimit(2)
+                }
+            }
+            if island.messages.latest != nil {
+                HStack(spacing: 6) {
+                    TextField(
+                        "Reply",
+                        text: Binding(
+                            get: { island.messageDraft },
+                            set: { island.messageDraft = $0 }
+                        )
+                    )
+                    .textFieldStyle(.plain)
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundStyle(.white)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 6)
+                    .background(Color.white.opacity(0.08), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+                    .onSubmit { island.sendMessageReply() }
+                    Button(action: island.sendMessageReply) {
+                        Image(systemName: "arrow.up.circle.fill")
+                            .font(.system(size: 18))
+                            .foregroundStyle(Color(nsColor: .systemGreen))
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("Send reply")
+                }
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(10)
+        .background(Color.white.opacity(0.08), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+    }
+
+    private var actionsSection: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack(spacing: 6) {
+                if island.actions.showCheck, let started = island.actions.finishedAt {
+                    DrawnCheck(startedAt: started, side: 16)
+                } else if !island.actions.running.isEmpty {
+                    TimelineView(.animation(minimumInterval: 1.0 / 30.0)) { context in
+                        Image(systemName: "arrow.triangle.2.circlepath")
+                            .font(.system(size: 12, weight: .bold))
+                            .rotationEffect(.degrees(context.date.timeIntervalSinceReferenceDate * 240))
+                    }
+                }
+                Text(island.actions.running.isEmpty ? "GitHub Actions" : "GitHub Actions · \(island.actions.running.count)")
+                    .font(.system(size: 12, weight: .semibold))
+            }
+            .foregroundStyle(island.actions.showFailure ? Color(nsColor: .systemRed) : Color(nsColor: .systemPurple))
+            if let note = island.actions.note {
+                Text(note)
+                    .font(.system(size: 11, weight: .medium))
+                    .foregroundStyle(.white.opacity(0.7))
+            }
+            if let current = island.actions.running.first {
+                Text(current.headline)
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundStyle(.white)
+                    .lineLimit(2)
+                Text(current.name)
+                    .font(.system(size: 11, weight: .medium))
+                    .foregroundStyle(.white.opacity(0.62))
+                    .lineLimit(1)
+            } else if island.actions.showCheck {
+                Text("Passed")
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundStyle(.white)
+            } else if island.actions.showFailure {
+                Text("Failed")
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundStyle(Color(nsColor: .systemRed))
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(10)
+        .background(Color.white.opacity(0.08), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+    }
+
+    private var cursorSection: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack(spacing: 6) {
+                if island.cursor.isWorking {
+                    SpinningStar(spinning: true, size: 11)
+                        .foregroundStyle(Color(nsColor: .systemTeal))
+                } else if let started = island.cursor.finishedAt {
+                    DrawnCheck(startedAt: started, side: 16)
+                }
+                Text(island.cursor.runningCount > 0 ? "Cursor · \(island.cursor.runningCount)" : "Cursor")
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundStyle(Color(nsColor: .systemTeal))
+                Spacer()
+                if !island.cursor.requestCost.isEmpty {
+                    Text(island.cursor.requestCost)
+                        .font(.system(size: 12, weight: .semibold, design: .rounded))
+                        .foregroundStyle(.white)
+                        .accessibilityLabel("Estimated request cost \(island.cursor.requestCost)")
+                }
+            }
+            ForEach(island.cursor.lines) { line in
+                VStack(alignment: .leading, spacing: 1) {
+                    Text(line.title)
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundStyle(.white)
+                        .lineLimit(1)
+                    Text(line.detail)
+                        .font(.system(size: 11, weight: .medium))
+                        .foregroundStyle(.white.opacity(0.62))
+                        .lineLimit(2)
+                }
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(10)
+        .background(Color.white.opacity(0.08), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
     }
 
     private var header: some View {

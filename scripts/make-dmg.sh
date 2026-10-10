@@ -162,11 +162,15 @@ cp "$WORK/background.png" "$MOUNT/.background/background.png"
 SetFile -a V "$MOUNT/.background"
 chflags hidden "$MOUNT/.background"
 
-osascript << EOF
+layout_ok=0
+for _attempt in 1 2 3; do
+if osascript << EOF
 tell application "Finder"
   tell disk "$VOLUME"
     open
+    delay 2
     set current view of container window to icon view
+    delay 1
     set toolbar visible of container window to false
     set statusbar visible of container window to false
     set the bounds of container window to {200, 120, 860, 540}
@@ -188,6 +192,16 @@ tell application "Finder"
   end tell
 end tell
 EOF
+then
+  layout_ok=1
+  break
+fi
+echo "Finder was not ready to place the icons. Trying again." >&2
+sleep 1
+done
+if [[ "$layout_ok" -ne 1 ]]; then
+  exit 1
+fi
 
 sync
 sleep 1

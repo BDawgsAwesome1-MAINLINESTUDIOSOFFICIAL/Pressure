@@ -22,6 +22,10 @@ struct PressureTests {
         check(config.warningThreshold < config.criticalThreshold, "warning stays below critical")
         check(config.criticalThreshold < config.autoCloseThreshold, "critical stays below auto-close")
 
+        check(AppConfig().showInDock, "the Dock icon stays on")
+        let savedWithoutDock = try? JSONDecoder().decode(AppConfig.self, from: Data(#"{"showInDock":false}"#.utf8))
+        check(savedWithoutDock?.showInDock == true, "a saved hide does not remove the Dock icon")
+
         let base = AppConfig()
         check(
             PressurePolicy.effectiveScore(40, kernel: .critical, config: base) == base.autoCloseThreshold,
@@ -198,6 +202,63 @@ struct PressureTests {
         } else {
             check(power.compactText == "Power", "a desktop Mac shows Power instead of a fake battery")
         }
+
+        let cursorNow = Date(timeIntervalSince1970: 1_700_000_000)
+        let cursorRaw = """
+        {"sessions":{"conv":{"title":"Pressure","phase":"working","step":"Reading HubWindow.swift","toolCount":4,"contextPercent":40,"updatedAt":1700000000}},"agents":{"abc":{"name":"Explore auth","kind":"explore","status":"running","step":"Searching files","parent":"conv","toolCount":2,"updatedAt":1700000000}}}
+        """
+        let cursorBoard = CursorActivityReader.snapshot(from: Data(cursorRaw.utf8), now: cursorNow)
+        check(cursorBoard.runningCount == 1, "a running Cursor subagent is counted")
+        check(cursorBoard.isActive, "Cursor activity shows while an agent is running")
+        check(cursorBoard.isWorking && cursorBoard.showsOnPill && !cursorBoard.showCheck, "the star stays on the pill only while Cursor is working")
+        let finishedNow = Date(timeIntervalSince1970: 1_700_000_000)
+        let finishedRaw = #"{"sessions":{"conv":{"title":"Pressure","phase":"done","step":"Done","finishedAt":1700000000,"updatedAt":1700000000}}}"#
+        let finished = CursorActivityReader.snapshot(from: Data(finishedRaw.utf8), now: finishedNow)
+        check(!finished.isWorking && finished.showCheck && finished.showsOnPill, "a finished turn shows the check on the pill")
+        let faded = CursorActivityReader.snapshot(
+            from: Data(finishedRaw.utf8),
+            now: finishedNow.addingTimeInterval(CursorActivityReader.checkWindow + 1)
+        )
+        check(!faded.isWorking && !faded.showCheck && !faded.showsOnPill, "the check leaves the pill after a few seconds")
+        check(
+            cursorBoard.lines.contains { $0.title == "Explore auth" && $0.detail.contains("Searching files") },
+            "the island keeps the subagent's current step"
+        )
+        check(cursorBoard.headline.contains("Searching files"), "the headline is what the agent is doing, got \(cursorBoard.headline)")
+        check(cursorBoard.requestCost.isEmpty, "a request without token counts has no cost")
+        let composer = CursorCost.estimate(model: "composer-2.5", fast: false, input: 1_000_000, output: 0, cacheRead: 0, cacheWrite: 0)
+        check(composer == 0.5, "Composer input is $0.50 per million, got \(composer ?? -1)")
+        let grok = CursorCost.estimate(model: "cursor-grok-4.6-high-fast", fast: true, input: 500_000, output: 10_000, cacheRead: 250_000, cacheWrite: 0)
+        check(abs((grok ?? 0) - 1.37) < 0.000_001, "a fast Grok turn prices uncached, cached, and output tokens, got \(grok ?? -1)")
+        check(CursorCost.estimate(model: "unknown-model", fast: false, input: 100, output: 10, cacheRead: 0, cacheWrite: 0) == nil, "an unknown model is not given a made-up price")
+        let pricedRaw = #"{"sessions":{"conv":{"title":"Pressure","phase":"done","step":"Done","finishedAt":1700000000,"updatedAt":1700000000,"usage":{"model":"composer-2.5","fast":false,"input":1000000,"output":0,"cacheRead":0,"cacheWrite":0}}}}"#
+        let priced = CursorActivityReader.snapshot(from: Data(pricedRaw.utf8), now: cursorNow)
+        check(priced.requestCost == "Est. $0.50", "the expanded request shows one estimate, got \(priced.requestCost)")
+        let newerRaw = #"{"sessions":{"old":{"title":"Old","phase":"done","step":"Done","updatedAt":1699999990,"usage":{"model":"composer-2.5","input":1000000,"output":0}},"new":{"title":"Pressure","phase":"working","step":"Working","updatedAt":1700000000}}}"#
+        let newer = CursorActivityReader.snapshot(from: Data(newerRaw.utf8), now: cursorNow)
+        check(newer.requestCost.isEmpty, "a new request does not keep the previous estimate")
+        let staleCursor = CursorActivityReader.snapshot(
+            from: Data(#"{"agents":{"old":{"name":"Old","status":"running","step":"Gone","updatedAt":1699999000}}}"#.utf8),
+            now: cursorNow
+        )
+        check(!staleCursor.isActive, "a Cursor agent that stopped updating is hidden")
+
+        let messageJSON = Data(#"[{"id":"9","text":"On my way","fromMe":"0","appleDate":"200","handle":"+15551212","chat":"iMessage;-;+15551212","title":"Sam"}]"#.utf8)
+        let firstLook = MessageParser.unseen(from: messageJSON, baseline: nil)
+        check(firstLook.messages.isEmpty && firstLook.baseline == 200, "the first iMessage read does not replay history")
+        let fresh = MessageParser.unseen(from: messageJSON, baseline: 100)
+        check(fresh.messages.count == 1 && fresh.messages[0].sender == "Sam" && fresh.messages[0].body == "On my way", "a newer iMessage is shown")
+        let seen = MessageParser.unseen(from: messageJSON, baseline: 200)
+        check(seen.messages.isEmpty, "an iMessage at the baseline stays hidden")
+
+        let runningAction = ActionRun(id: 1, name: "CI", title: "fix island", status: "in_progress", conclusion: "", updatedAt: cursorNow)
+        let started = ActionBoard.reduce(previous: ActionMemory(), runs: [runningAction], now: cursorNow)
+        check(started.1.running.count == 1 && started.1.showsOnPill && !started.1.showCheck, "a running GitHub Action stays on the pill")
+        let passed = ActionRun(id: 1, name: "CI", title: "fix island", status: "completed", conclusion: "success", updatedAt: cursorNow)
+        let finishedAction = ActionBoard.reduce(previous: started.0, runs: [passed], now: cursorNow)
+        check(finishedAction.1.showCheck && finishedAction.1.running.isEmpty, "a finished GitHub Action shows the check")
+        let laterAction = ActionBoard.reduce(previous: finishedAction.0, runs: [passed], now: cursorNow.addingTimeInterval(ActionSnapshot.resultWindow + 1))
+        check(!laterAction.1.showCheck && !laterAction.1.showsOnPill, "the GitHub check leaves after a few seconds")
 
         if let snapshot = MemoryReader.read() {
             check((0...100).contains(snapshot.pressureScore), "live pressure score is in range, got \(snapshot.pressureScore)")

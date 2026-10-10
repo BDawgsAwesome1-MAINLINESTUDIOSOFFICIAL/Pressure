@@ -31,6 +31,10 @@ final class SettingsWindowController {
         window.center()
         window.makeKeyAndOrderFront(nil)
     }
+
+    func close() {
+        window.orderOut(nil)
+    }
 }
 
 struct SettingsView: View {
@@ -40,6 +44,7 @@ struct SettingsView: View {
     @ObservedObject var selection: SettingsSelection
     var loginStatus: () -> String
     var setLaunchAtLogin: (Bool) -> Void
+    var resetPressure: () -> Void
 
     init(model: PressureAppModel, selection: SettingsSelection) {
         monitor = model.monitor
@@ -48,6 +53,7 @@ struct SettingsView: View {
         self.selection = selection
         loginStatus = { model.loginItemStatus }
         setLaunchAtLogin = { model.setLaunchAtLogin($0) }
+        resetPressure = { model.resetPressure() }
     }
 
     var body: some View {
@@ -203,6 +209,10 @@ struct SettingsView: View {
                     .font(.callout)
                     .foregroundStyle(.secondary)
             }
+            Button("Reset Pressure", action: resetPressure)
+            Text("Use this after you allow Full Disk Access. Pressure starts again so it can read iMessages.")
+                .font(.callout)
+                .foregroundStyle(.secondary)
         }
     }
 

@@ -27,9 +27,9 @@
 	<key>LSMinimumSystemVersion</key>
 	<string>13.0</string>
 	<key>LSUIElement</key>
-	<true/>
+	<false/>
 	<key>NSAppleEventsUsageDescription</key>
-	<string>Pressure controls Music, Spotify, Safari, and Brave for Now Playing on the side island, and quits apps you marked as low priority when memory is almost full.</string>
+	<string>Pressure controls Music, Spotify, Safari, and Brave for Now Playing, sends iMessages you reply to from the side island, and quits apps you marked as low priority when memory is almost full.</string>
 	<key>NSCalendarsUsageDescription</key>
 	<string>Pressure shows your next event today on the side island.</string>
 	<key>NSCalendarsFullAccessUsageDescription</key>
